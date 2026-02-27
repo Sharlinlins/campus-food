@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { notificationService } from '../../services/notificationService'
 import NotificationToast from './NotificationToast'
-import { BellIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/outline'
+import { BellIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 import {motion, AnimatePresence } from 'framer-motion'
 
 const NotificationListener = () => {
