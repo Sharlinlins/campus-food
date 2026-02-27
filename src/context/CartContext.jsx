@@ -24,12 +24,10 @@ export const CartProvider = ({ children }) => {
     const loadCart = () => {
       try {
         const savedCart = localStorage.getItem('cart')
-        if (savedCart) {
+        if (savedCart && isMounted.current) {
           const { items, restaurant: savedRestaurant } = JSON.parse(savedCart)
-          if (isMounted.current) {
-            setCartItems(items || [])
-            setRestaurant(savedRestaurant || null)
-          }
+          setCartItems(items || [])
+          setRestaurant(savedRestaurant || null)
         }
       } catch (error) {
         console.error('Error loading cart:', error)
@@ -49,7 +47,7 @@ export const CartProvider = ({ children }) => {
 
   // Save to localStorage whenever cart changes
   useEffect(() => {
-    if (isInitialized) {
+    if (isInitialized && isMounted.current) {
       localStorage.setItem('cart', JSON.stringify({
         items: cartItems,
         restaurant

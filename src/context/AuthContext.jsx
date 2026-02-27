@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react'
+import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react'
 import { authService } from '../services/authService'
 import toast from 'react-hot-toast'
 
@@ -16,53 +16,79 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const isMounted = useRef(true)
 
-  useEffect(() => {
-    const unsubscribe = authService.onAuthStateChange((user) => {
-      setUser(user)
-      setLoading(false)
-    })
-    return () => unsubscribe()
+  // Use useCallback for functions
+  const setUserState = useCallback((newUser) => {
+    if (isMounted.current) {
+      setUser(newUser)
+    }
   }, [])
 
-  const login = async (email, password) => {
+  const setLoadingState = useCallback((value) => {
+    if (isMounted.current) {
+      setLoading(value)
+    }
+  }, [])
+
+  const setErrorState = useCallback((value) => {
+    if (isMounted.current) {
+      setError(value)
+    }
+  }, [])
+
+  useEffect(() => {
+    isMounted.current = true
+    
+    const unsubscribe = authService.onAuthStateChange((user) => {
+      setUserState(user)
+      setLoadingState(false)
+    })
+    
+    return () => {
+      isMounted.current = false
+      unsubscribe()
+    }
+  }, [setUserState, setLoadingState])
+
+  const login = useCallback(async (email, password) => {
     try {
-      setError(null)
+      setErrorState(null)
       const user = await authService.login(email, password)
-      setUser(user)
+      setUserState(user)
       toast.success('Login successful!')
       return user
     } catch (error) {
-      setError(error.message)
+      setErrorState(error.message)
       toast.error(error.message)
       throw error
     }
-  }
+  }, [setErrorState, setUserState])
 
-  const register = async (userData) => {
+  const register = useCallback(async (userData) => {
     try {
-      setError(null)
+      setErrorState(null)
       const user = await authService.register(userData)
-      setUser(user)
+      setUserState(user)
       toast.success('Registration successful!')
       return user
     } catch (error) {
-      setError(error.message)
+      setErrorState(error.message)
       toast.error(error.message)
       throw error
     }
-  }
+  }, [setErrorState, setUserState])
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await authService.logout()
-      setUser(null)
+      setUserState(null)
       toast.success('Logged out successfully')
     } catch (error) {
-      setError(error.message)
+      setErrorState(error.message)
       toast.error(error.message)
     }
-  }
+  }, [setErrorState, setUserState])
 
   const value = {
     user,

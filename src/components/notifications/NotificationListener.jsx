@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { notificationService } from '../../services/notificationService'
 import NotificationToast from './NotificationToast'
 import { BellIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 
 const NotificationListener = () => {
   const { user } = useAuth()
@@ -13,18 +13,34 @@ const NotificationListener = () => {
   const [showNotifications, setShowNotifications] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
-  useEffect(() => {
+  // Use useCallback to memoize functions
+  const fetchUserNotifications = useCallback(async () => {
     if (!user) return
-
-    checkPermissionAndInitialize()
     
-    // Set up interval to fetch new notifications
-    const interval = setInterval(fetchUserNotifications, 30000) // Every 30 seconds
-    
-    return () => clearInterval(interval)
+    try {
+      const userNotifications = await notificationService.getUserNotifications(user.uid)
+      setNotifications(userNotifications)
+    } catch (error) {
+      console.error('Error fetching notifications:', error)
+    }
   }, [user])
 
-  const checkPermissionAndInitialize = async () => {
+  const initializeNotifications = useCallback(async () => {
+    setIsLoading(true)
+    const { granted, error, message } = await notificationService.requestPermission(user?.uid)
+    
+    if (granted) {
+      console.log('Notifications initialized successfully')
+      await fetchUserNotifications()
+      setShowPrompt(false)
+      setBlockedMessage('')
+    } else if (error === 'denied') {
+      setBlockedMessage(message)
+    }
+    setIsLoading(false)
+  }, [user, fetchUserNotifications])
+
+  const checkPermissionAndInitialize = useCallback(async () => {
     const status = notificationService.getPermissionStatus()
     
     if (status.permission === 'granted') {
@@ -34,33 +50,36 @@ const NotificationListener = () => {
     } else if (status.permission === 'denied') {
       setBlockedMessage(status.message)
     }
-  }
+  }, [initializeNotifications])
 
-  const initializeNotifications = async () => {
-    setIsLoading(true)
-    const { granted, error, message } = await notificationService.requestPermission(user?.uid)
-    
-    if (granted) {
-      console.log('Notifications initialized successfully')
-      fetchUserNotifications()
-      setShowPrompt(false)
-      setBlockedMessage('')
-    } else if (error === 'denied') {
-      setBlockedMessage(message)
-    }
-    setIsLoading(false)
-  }
+  // Use useEffect with proper dependencies and conditions
+  useEffect(() => {
+    let isMounted = true
+    let intervalId = null
 
-  const fetchUserNotifications = async () => {
-    if (!user) return
-    
-    try {
-      const userNotifications = await notificationService.getUserNotifications(user.uid)
-      setNotifications(userNotifications)
-    } catch (error) {
-      console.error('Error fetching notifications:', error)
+    const setupNotifications = async () => {
+      if (!user || !isMounted) return
+      await checkPermissionAndInitialize()
     }
-  }
+
+    setupNotifications()
+
+    // Set up interval only if needed
+    if (user) {
+      intervalId = setInterval(() => {
+        if (isMounted) {
+          fetchUserNotifications()
+        }
+      }, 30000)
+    }
+
+    return () => {
+      isMounted = false
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+    }
+  }, [user, checkPermissionAndInitialize, fetchUserNotifications]) // Add all dependencies
 
   const handleEnableNotifications = async () => {
     await initializeNotifications()
@@ -106,7 +125,7 @@ const NotificationListener = () => {
                   onClick={() => setShowPrompt(false)}
                   className="text-blue-500 hover:text-blue-700"
                 >
-                  <XIXMarkIcon className="h-4 w-4" />
+                  <XMarkIcon className="h-4 w-4" />
                 </button>
               </div>
               <div className="p-4">
@@ -172,7 +191,7 @@ const NotificationListener = () => {
                   disabled={isLoading}
                   className="w-full bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 flex items-center justify-center"
                 >
-                  <ArrowPathIcon className="h-4 w-4 mr-2" />
+                  <ArrowPathIcon0 className="h-4 w-4 mr-2" />
                   {isLoading ? 'Checking...' : 'I\'ve enabled them, try again'}
                 </button>
               </div>
