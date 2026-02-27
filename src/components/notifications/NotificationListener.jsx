@@ -2,8 +2,8 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { notificationService } from '../../services/notificationService'
 import NotificationToast from './NotificationToast'
-import { BellIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
-import { AnimatePresence } from 'framer-motion'
+import { BellIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/outline'
+import {motion, AnimatePresence } from 'framer-motion'
 
 const NotificationListener = () => {
   const { user } = useAuth()
@@ -191,7 +191,7 @@ const NotificationListener = () => {
                   disabled={isLoading}
                   className="w-full bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 flex items-center justify-center"
                 >
-                  <ArrowPathIcon0 className="h-4 w-4 mr-2" />
+                  <ArrowPathIcon className="h-4 w-4 mr-2" />
                   {isLoading ? 'Checking...' : 'I\'ve enabled them, try again'}
                 </button>
               </div>
