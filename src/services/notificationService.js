@@ -302,7 +302,9 @@ export const notificationService = {
   },
 
   // Reset notification state (call this when user wants to try again)
-  async resetAndRequestPermission(userId) {
+// Add this function to the notificationService object
+async resetAndRequestPermission(userId) {
+  try {
     // Clear any stored permissions in Firebase
     if (userId) {
       const q = query(
@@ -318,5 +320,9 @@ export const notificationService = {
     
     // Request permission again
     return this.requestPermission(userId)
+  } catch (error) {
+    console.error('Error resetting permissions:', error)
+    return { granted: false, error: error.message }
   }
+}
 }

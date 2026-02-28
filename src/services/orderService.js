@@ -121,10 +121,45 @@ export const orderService = {
       const bill = generateBill({ id: docRef.id, ...order })
       await updateDoc(docRef, { bill })
 
+      // 🔔 NOTIFICATION: Notify admin about new order
+      await this.notifyAdminNewOrder(docRef.id, order)
+
       return { id: docRef.id, ...order, bill }
     } catch (error) {
       console.error('Error creating order:', error)
       throw new Error(error.message || 'Failed to create order')
+    }
+  },
+
+  // Add this new function to notify admins
+  async notifyAdminNewOrder(orderId, orderData) {
+    try {
+      // Get all admin users
+      const adminsQuery = query(
+        collection(db, 'users'),
+        where('role', '==', 'admin')
+      )
+      const adminsSnapshot = await getDocs(adminsQuery)
+
+      const notificationPromises = adminsSnapshot.docs.map(adminDoc => {
+        const adminId = adminDoc.id
+        return notificationService.createNotification(adminId, {
+          title: '🆕 New Order Received',
+          body: `Order #${orderData.orderNumber || orderId.slice(-8)} for ₹${orderData.total?.toFixed(2) || '0.00'}`,
+          type: 'new_order',
+          data: {
+            orderId,
+            url: `/admin/orders?order=${orderId}`,
+            customerName: orderData.userName,
+            total: orderData.total
+          }
+        })
+      })
+
+      await Promise.all(notificationPromises)
+      console.log(`✅ Notified ${adminsSnapshot.size} admins about new order`)
+    } catch (error) {
+      console.error('Error notifying admins:', error)
     }
   },
 
@@ -313,11 +348,42 @@ export const orderService = {
       })
       console.log('✅ Delivery boy stats updated')
 
+      // 🔔 NOTIFICATION: Notify delivery boy about new assignment
+      await this.notifyDeliveryBoy(orderId, deliveryBoyId, deliveryBoyName)
+
       console.log('✅ Assignment complete')
       return true
     } catch (error) {
       console.error('❌ Assignment failed:', error)
       throw new Error(`Failed to assign delivery boy: ${error.message}`)
+    }
+  },
+
+  // Add this new function to notify delivery boy
+  async notifyDeliveryBoy(orderId, deliveryBoyId, deliveryBoyName) {
+    try {
+      // Get order details
+      const orderDoc = await getDoc(doc(db, 'orders', orderId))
+      if (!orderDoc.exists()) return
+
+      const order = orderDoc.data()
+
+      await notificationService.createNotification(deliveryBoyId, {
+        title: '🚚 New Delivery Assignment',
+        body: `Order #${order.orderNumber || orderId.slice(-8)} assigned to you`,
+        type: 'delivery_assignment',
+        data: {
+          orderId,
+          url: '/delivery/orders',
+          customerName: order.userName,
+          deliveryAddress: order.deliveryAddress,
+          total: order.total
+        }
+      })
+
+      console.log(`✅ Notified delivery boy ${deliveryBoyName} about new assignment`)
+    } catch (error) {
+      console.error('Error notifying delivery boy:', error)
     }
   },
 
