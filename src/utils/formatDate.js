@@ -104,6 +104,18 @@ export const formatCurrency = (amount) => {
   }).format(amount)
 }
 
+// Optional: For displaying without decimals (for whole numbers)
+export const formatCurrencySimple = (amount) => {
+  if (amount === undefined || amount === null) return '₹0'
+  
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount)
+}
+
 // Alternative: If you want to handle lakhs/crores formatting
 export const formatIndianCurrency = (amount) => {
   if (amount === undefined || amount === null) return '₹0'

@@ -15,6 +15,7 @@ import {
   MapPinIcon,
 } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
+import { formatCurrency } from '../../utils/formatDate'
 import toast from "react-hot-toast";
 
 const Cart = () => {
@@ -226,21 +227,21 @@ const Cart = () => {
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between text-gray-600">
                   <span>Subtotal</span>
-                  <span>${subtotal.toFixed(2)}</span>
+                  <span>{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Tax (10%)</span>
-                  <span>${tax.toFixed(2)}</span>
+                  <span>{formatCurrency(tax)}</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Delivery Fee</span>
-                  <span>${deliveryFee.toFixed(2)}</span>
+                  <span>{formatCurrency(deliveryFee)}</span>
                 </div>
                 <div className="border-t pt-3">
                   <div className="flex justify-between font-bold text-lg">
                     <span>Total</span>
                     <span className="text-primary-600">
-                      ${total.toFixed(2)}
+                      {formatCurrency(total)}
                     </span>
                   </div>
                 </div>

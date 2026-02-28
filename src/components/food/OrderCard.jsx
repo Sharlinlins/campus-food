@@ -6,6 +6,7 @@ import { ORDER_STATUS_LABELS } from '../../utils/constants'
 import { formatDate, formatCurrency } from '../../utils/formatDate' // Use formatCurrency instead of $
 import { ClockIcon, MapPinIcon, UserIcon } from '@heroicons/react/24/outline'
 
+
 // Status color mapping - simplified and direct
 const STATUS_COLORS = {
   pending: 'bg-yellow-100 text-yellow-800',

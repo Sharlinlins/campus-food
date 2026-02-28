@@ -6,6 +6,7 @@ import Button from '../ui/Button'
 import GlassCard from '../ui/GlassCard'
 import { ShoppingCartIcon, HeartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid'
+import { formatCurrency } from '../../utils/formatDate'
 import toast from 'react-hot-toast'
 
 const FoodCard = ({ food, restaurant }) => {
@@ -72,7 +73,7 @@ const FoodCard = ({ food, restaurant }) => {
       <div className="p-4">
         <div className="flex justify-between items-start mb-2">
           <h3 className="text-lg font-semibold text-gray-800">{food.name}</h3>
-          <span className="text-lg font-bold text-primary-600">${food.price}</span>
+          <span className="text-lg font-bold text-primary-600">{formatCurrency(food.price)}</span>
         </div>
 
         <p className="text-sm text-gray-600 mb-3 line-clamp-2">{food.description}</p>

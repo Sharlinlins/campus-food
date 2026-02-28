@@ -1,6 +1,7 @@
 import React from 'react'
 import { useCart } from '../../context/CartContext'
 import { MinusIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { formatCurrency } from '../../utils/formatDate'
 import { motion } from 'framer-motion'
 
 const CartItem = ({ item }) => {
@@ -26,7 +27,7 @@ const CartItem = ({ item }) => {
       {/* Item Details */}
       <div className="flex-1">
         <h4 className="font-semibold text-gray-800">{item.name}</h4>
-        <p className="text-sm text-gray-500">${item.price} each</p>
+        <p className="text-sm text-gray-500">{formatCurrency(item.price)} each</p>
       </div>
 
       {/* Quantity Controls */}
