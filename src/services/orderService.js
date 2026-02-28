@@ -86,50 +86,51 @@ const createOrderNotification = async (orderId, newStatus, userId, userRole, ord
 }
 
 export const orderService = {
-  async createOrder(orderData) {
-    try {
-      console.log('Creating order with data:', orderData)
+async createOrder(orderData) {
+  try {
+    console.log('Creating order with data:', orderData)
 
-      // Validate required fields
-      if (!orderData.userId) throw new Error('User ID is required')
-      if (!orderData.items || orderData.items.length === 0) throw new Error('Order must have items')
-      if (!orderData.deliveryAddress) throw new Error('Delivery address is required')
+    // Validate required fields
+    if (!orderData.userId) throw new Error('User ID is required')
+    if (!orderData.items || orderData.items.length === 0) throw new Error('Order must have items')
+    if (!orderData.deliveryAddress) throw new Error('Delivery address is required')
 
-      // Create initial status history with client timestamps
-      const initialHistory = [
-        {
-          status: ORDER_STATUS.PENDING,
-          timestamp: new Date().toISOString(),
-          note: 'Order placed'
-        }
-      ]
-
-      const order = {
-        ...orderData,
+    // Create initial status history with client timestamps as ISO strings
+    const initialHistory = [
+      {
         status: ORDER_STATUS.PENDING,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        orderNumber: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        statusHistory: initialHistory
+        timestamp: new Date().toISOString(), // Store as ISO string, not serverTimestamp
+        note: 'Order placed'
       }
+    ]
 
-      console.log('Saving order to Firestore...')
-      const docRef = await addDoc(collection(db, 'orders'), order)
-      console.log('Order created with ID:', docRef.id)
-
-      // Generate bill
-      const bill = generateBill({ id: docRef.id, ...order })
-      await updateDoc(docRef, { bill })
-
-      // 🔔 NOTIFICATION: Notify admin about new order
-      await this.notifyAdminNewOrder(docRef.id, order)
-
-      return { id: docRef.id, ...order, bill }
-    } catch (error) {
-      console.error('Error creating order:', error)
-      throw new Error(error.message || 'Failed to create order')
+    const order = {
+      ...orderData,
+      status: ORDER_STATUS.PENDING,
+      createdAt: serverTimestamp(), // This is fine for top-level
+      createdAtISO: new Date().toISOString(), // Add ISO string as backup
+      updatedAt: serverTimestamp(),
+      orderNumber: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      statusHistory: initialHistory
     }
-  },
+
+    console.log('Saving order to Firestore...')
+    const docRef = await addDoc(collection(db, 'orders'), order)
+    console.log('Order created with ID:', docRef.id)
+    
+    // Generate bill
+    const bill = generateBill({ id: docRef.id, ...order })
+    await updateDoc(docRef, { bill })
+
+    // Notify admin about new order
+    await this.notifyAdminNewOrder(docRef.id, order)
+
+    return { id: docRef.id, ...order, bill }
+  } catch (error) {
+    console.error('Error creating order:', error)
+    throw new Error(error.message || 'Failed to create order')
+  }
+},
 
   // Add this new function to notify admins
   async notifyAdminNewOrder(orderId, orderData) {

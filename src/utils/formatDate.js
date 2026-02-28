@@ -1,55 +1,95 @@
-// Date formatting functions
+// Date formatting function with robust error handling
 export const formatDate = (date, format = 'medium') => {
-  if (!date) return 'N/A'
-  
-  const d = new Date(date)
-  
-  const formats = {
-    short: {
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric'
-    },
-    medium: {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    },
-    long: {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    },
-    time: {
-      hour: '2-digit',
-      minute: '2-digit'
-    },
-    relative: (date) => {
-      const now = new Date()
-      const diff = now - d
-      const seconds = Math.floor(diff / 1000)
-      const minutes = Math.floor(seconds / 60)
-      const hours = Math.floor(minutes / 60)
-      const days = Math.floor(hours / 24)
+  // Handle null, undefined, or empty values
+  if (date === undefined || date === null || date === '') {
+    console.warn('formatDate received invalid date:', date)
+    return 'N/A'
+  }
 
-      if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`
-      if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`
-      if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`
-      return 'Just now'
+  try {
+    // Handle Firebase Timestamp objects
+    let dateObj
+    if (date && typeof date.toDate === 'function') {
+      // It's a Firebase Timestamp
+      dateObj = date.toDate()
+    } else if (date instanceof Date) {
+      // It's already a Date object
+      dateObj = date
+    } else if (typeof date === 'string' || typeof date === 'number') {
+      // It's a string or timestamp number
+      dateObj = new Date(date)
+    } else if (date.seconds) {
+      // It's a Firebase Timestamp in object form
+      dateObj = new Date(date.seconds * 1000)
+    } else {
+      console.warn('formatDate received unknown date format:', date)
+      return 'Invalid Date'
     }
-  }
 
-  if (format === 'relative') {
-    return formats.relative(date)
-  }
+    // Check if date is valid
+    if (isNaN(dateObj.getTime())) {
+      console.warn('formatDate received invalid date value:', date)
+      return 'Invalid Date'
+    }
 
-  return d.toLocaleDateString('en-US', formats[format] || formats.medium)
+    const formats = {
+      short: {
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric'
+      },
+      medium: {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      },
+      long: {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      },
+      time: {
+        hour: '2-digit',
+        minute: '2-digit'
+      },
+      date: {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      },
+      relative: (date) => {
+        const now = new Date()
+        const diff = now - dateObj
+        const seconds = Math.floor(diff / 1000)
+        const minutes = Math.floor(seconds / 60)
+        const hours = Math.floor(minutes / 60)
+        const days = Math.floor(hours / 24)
+
+        if (days > 7) return formatDate(date, 'medium')
+        if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`
+        if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`
+        if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`
+        if (seconds > 30) return `${seconds} seconds ago`
+        return 'Just now'
+      }
+    }
+
+    if (format === 'relative') {
+      return formats.relative(dateObj)
+    }
+
+    return dateObj.toLocaleDateString('en-US', formats[format] || formats.medium)
+    
+  } catch (error) {
+    console.error('Error formatting date:', error, 'Date value:', date)
+    return 'Invalid Date'
+  }
 }
 
 // Currency formatting function for Indian Rupees
@@ -105,11 +145,10 @@ export const formatPercentage = (value, decimals = 1) => {
   }).format(value / 100)
 }
 
-// Phone number formatting (keep as is for Indian numbers)
+// Phone number formatting
 export const formatPhoneNumber = (phoneNumber) => {
   if (!phoneNumber) return ''
   
-  // Indian phone number format: +91 XXXXX XXXXX
   const cleaned = ('' + phoneNumber).replace(/\D/g, '')
   
   // Check if it's an Indian number with +91
@@ -125,7 +164,7 @@ export const formatPhoneNumber = (phoneNumber) => {
   return phoneNumber
 }
 
-// File size formatting (unchanged)
+// File size formatting
 export const formatFileSize = (bytes) => {
   if (bytes === 0) return '0 Bytes'
   

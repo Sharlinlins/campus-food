@@ -2,27 +2,31 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import GlassCard from '../ui/GlassCard'
 import Button from '../ui/Button'
-import { ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from '../../utils/constants'
-import { formatDate } from '../../utils/formatDate'
+import { ORDER_STATUS_LABELS } from '../../utils/constants'
+import { formatDate, formatCurrency } from '../../utils/formatDate' // Use formatCurrency instead of $
 import { ClockIcon, MapPinIcon, UserIcon } from '@heroicons/react/24/outline'
 
+// Status color mapping - simplified and direct
+const STATUS_COLORS = {
+  pending: 'bg-yellow-100 text-yellow-800',
+  confirmed: 'bg-blue-100 text-blue-800',
+  preparing: 'bg-purple-100 text-purple-800',
+  ready: 'bg-green-100 text-green-800',
+  assigned: 'bg-indigo-100 text-indigo-800',
+  picked_up: 'bg-pink-100 text-pink-800',
+  on_the_way: 'bg-orange-100 text-orange-800',
+  delivered: 'bg-green-100 text-green-800',
+  cancelled: 'bg-red-100 text-red-800'
+}
+
 const OrderCard = ({ order, onViewDetails, onUpdateStatus, userRole }) => {
-  const statusColor = ORDER_STATUS_COLORS[order.status] || 'gray'
-  
+  // Get status color based on order status
   const getStatusBadge = () => {
-    const colors = {
-      yellow: 'bg-yellow-100 text-yellow-800',
-      blue: 'bg-blue-100 text-blue-800',
-      purple: 'bg-purple-100 text-purple-800',
-      green: 'bg-green-100 text-green-800',
-      indigo: 'bg-indigo-100 text-indigo-800',
-      pink: 'bg-pink-100 text-pink-800',
-      orange: 'bg-orange-100 text-orange-800',
-      red: 'bg-red-100 text-red-800'
-    }
-    
-    return colors[statusColor] || 'bg-gray-100 text-gray-800'
+    return STATUS_COLORS[order.status] || 'bg-gray-100 text-gray-800'
   }
+
+  // Safe ID display
+  const displayId = order.orderNumber || (order.id ? order.id.slice(-8) : 'N/A')
 
   return (
     <motion.div
@@ -37,7 +41,7 @@ const OrderCard = ({ order, onViewDetails, onUpdateStatus, userRole }) => {
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
               <h3 className="text-lg font-semibold text-gray-800">
-                Order #{order.id.slice(-8)}
+                Order #{displayId}
               </h3>
               <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge()}`}>
                 {ORDER_STATUS_LABELS[order.status] || order.status}
@@ -53,7 +57,7 @@ const OrderCard = ({ order, onViewDetails, onUpdateStatus, userRole }) => {
               {order.deliveryAddress && (
                 <p className="flex items-center gap-2">
                   <MapPinIcon className="h-4 w-4" />
-                  {order.deliveryAddress}
+                  <span className="truncate max-w-xs">{order.deliveryAddress}</span>
                 </p>
               )}
               
@@ -87,10 +91,10 @@ const OrderCard = ({ order, onViewDetails, onUpdateStatus, userRole }) => {
           <div className="flex flex-col items-end gap-3">
             <div className="text-right">
               <p className="text-2xl font-bold text-primary-600">
-                ${order.total?.toFixed(2)}
+                {formatCurrency(order.total)}
               </p>
               <p className="text-xs text-gray-500">
-                {order.items?.length} items
+                {order.items?.length || 0} items
               </p>
             </div>
 
@@ -103,7 +107,8 @@ const OrderCard = ({ order, onViewDetails, onUpdateStatus, userRole }) => {
                 View Details
               </Button>
               
-              {onUpdateStatus && (
+              {/* Show Update Status button for admin/delivery roles */}
+              {onUpdateStatus && (userRole === 'admin' || userRole === 'delivery') && (
                 <Button
                   variant="primary"
                   size="sm"
