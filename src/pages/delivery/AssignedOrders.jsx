@@ -7,7 +7,7 @@ import Button from '../../components/ui/Button'
 import { orderService } from '../../services/orderService'
 import { ORDER_STATUS, ORDER_STATUS_LABELS } from '../../utils/constants'
 import { formatDate, formatCurrency } from '../../utils/formatDate'
-import { CheckCircleIcon, XCircleIcon, ClockIcon, TruckIcon } from '@heroicons/react/24/outline'
+import { CheckCircleIcon, XCircleIcon, ClockIcon, TruckIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 
 const AssignedOrders = () => {
@@ -15,74 +15,61 @@ const AssignedOrders = () => {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [history, setHistory] = useState([])
-  const [activeTab, setActiveTab] = useState('current') // 'current' or 'history'
+  const [activeTab, setActiveTab] = useState('current')
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     if (user) {
-      fetchOrders()
-      fetchHistory()
+      fetchAllData()
       
-      // Set up real-time listener for current orders
+      // Set up real-time listener for all orders
       const unsubscribe = orderService.subscribeToOrders((updatedOrders) => {
-        const myCurrentOrders = updatedOrders.filter(order => 
-          order.deliveryBoyId === user.uid && 
-          [ORDER_STATUS.ASSIGNED, ORDER_STATUS.PICKED_UP, ORDER_STATUS.ON_THE_WAY].includes(order.status)
-        )
-        setOrders(myCurrentOrders)
+        const myOrders = updatedOrders.filter(order => order.deliveryBoyId === user.uid)
         
-        // Also update history
-        const myHistory = updatedOrders.filter(order => 
-          order.deliveryBoyId === user.uid && 
-          [ORDER_STATUS.DELIVERED, ORDER_STATUS.CANCELLED].includes(order.status)
+        // Separate current and history
+        const current = myOrders.filter(o => 
+          [ORDER_STATUS.ASSIGNED, ORDER_STATUS.PICKED_UP, ORDER_STATUS.ON_THE_WAY].includes(o.status)
         )
-        setHistory(myHistory)
+        const past = myOrders.filter(o => 
+          [ORDER_STATUS.DELIVERED, ORDER_STATUS.CANCELLED].includes(o.status)
+        )
+        
+        setOrders(current)
+        setHistory(past)
       }, { deliveryBoyId: user.uid })
       
       return () => unsubscribe()
     }
   }, [user])
 
-  const fetchOrders = async () => {
+  const fetchAllData = async () => {
+    setRefreshing(true)
     try {
-      const ordersData = await orderService.getOrders(user.uid, 'delivery')
-      const currentOrders = ordersData.filter(o => 
-        [ORDER_STATUS.ASSIGNED, ORDER_STATUS.PICKED_UP, ORDER_STATUS.ON_THE_WAY].includes(o.status)
-      )
-      setOrders(currentOrders)
-    } catch (error) {
-      console.error('Error fetching orders:', error)
-      toast.error('Failed to fetch orders')
-    }
-  }
-
-  const fetchHistory = async () => {
-    setLoading(true)
-    try {
-      console.log('Fetching delivery history for user:', user.uid)
+      console.log('Fetching all data for delivery boy:', user.uid)
       
       // Get all orders for this delivery boy
-      const ordersData = await orderService.getOrders(user.uid, 'delivery')
-      console.log('All orders fetched:', ordersData.length)
+      const allOrders = await orderService.getOrders(user.uid, 'delivery')
+      console.log('Total orders fetched:', allOrders.length)
       
-      // Filter for completed orders (delivered or cancelled)
-      const historyOrders = ordersData.filter(o => 
+      // Separate current and history
+      const current = allOrders.filter(o => 
+        [ORDER_STATUS.ASSIGNED, ORDER_STATUS.PICKED_UP, ORDER_STATUS.ON_THE_WAY].includes(o.status)
+      )
+      const past = allOrders.filter(o => 
         [ORDER_STATUS.DELIVERED, ORDER_STATUS.CANCELLED].includes(o.status)
       )
       
-      console.log('History orders found:', historyOrders.length)
-      console.log('History orders:', historyOrders.map(o => ({
-        id: o.id,
-        status: o.status,
-        deliveredAt: o.deliveredAt,
-        total: o.total
-      })))
+      console.log('Current orders:', current.length)
+      console.log('History orders:', past.length)
       
-      setHistory(historyOrders)
+      setOrders(current)
+      setHistory(past)
     } catch (error) {
-      console.error('Error fetching history:', error)
-      toast.error('Failed to fetch delivery history')
+      console.error('Error fetching data:', error)
+      toast.error('Failed to fetch orders')
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
@@ -90,8 +77,7 @@ const AssignedOrders = () => {
     try {
       await orderService.updateOrderStatus(orderId, newStatus)
       toast.success(`Order status updated`)
-      fetchOrders()
-      fetchHistory()
+      fetchAllData() // Refresh after update
     } catch (error) {
       console.error('Error updating order:', error)
       toast.error('Failed to update order status')
@@ -136,8 +122,17 @@ const AssignedOrders = () => {
       <Navbar />
       
       <div className="container-custom py-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">My Deliveries</h1>
-        <p className="text-gray-600 mb-8">Manage your delivery assignments</p>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold text-gray-800">My Deliveries</h1>
+          <button
+            onClick={fetchAllData}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg shadow hover:shadow-md transition-shadow"
+          >
+            <ArrowPathIcon className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
 
         {/* Tabs */}
         <div className="flex space-x-2 mb-6">
@@ -192,6 +187,7 @@ const AssignedOrders = () => {
                       transition={{ delay: index * 0.1 }}
                       className="bg-white rounded-xl shadow-lg p-6"
                     >
+                      {/* Order content - same as before */}
                       <div className="flex flex-wrap justify-between items-start gap-4">
                         <div>
                           <div className="flex items-center space-x-3 mb-2">
@@ -207,28 +203,13 @@ const AssignedOrders = () => {
                               <span className="font-medium">{order.userName || 'N/A'}</span>
                             </p>
                             <p className="text-sm">
-                              <span className="text-gray-500">Address:</span>{' '}
-                              <span className="font-medium">{order.deliveryAddress || 'N/A'}</span>
-                            </p>
-                            <p className="text-sm">
                               <span className="text-gray-500">Phone:</span>{' '}
                               <span className="font-medium">{order.userPhone || 'N/A'}</span>
                             </p>
-                            <p className="text-sm text-gray-500">
-                              Assigned: {formatDate(order.assignedAt, 'relative')}
+                            <p className="text-sm">
+                              <span className="text-gray-500">Address:</span>{' '}
+                              <span className="font-medium">{order.deliveryAddress || 'N/A'}</span>
                             </p>
-                          </div>
-
-                          {/* Order Items */}
-                          <div className="mt-4">
-                            <p className="text-sm font-medium mb-2">Items:</p>
-                            <div className="space-y-1">
-                              {order.items?.map((item, i) => (
-                                <p key={i} className="text-sm text-gray-600">
-                                  {item.quantity}x {item.name}
-                                </p>
-                              ))}
-                            </div>
                           </div>
                         </div>
 
@@ -237,7 +218,7 @@ const AssignedOrders = () => {
                             {formatCurrency(order.total)}
                           </p>
                           <p className="text-sm text-gray-500 mb-4">
-                            Payment: {order.paymentMethod || 'cash'}
+                            {order.items?.length || 0} items
                           </p>
 
                           <div className="space-y-2">
@@ -248,7 +229,6 @@ const AssignedOrders = () => {
                                 fullWidth
                                 onClick={() => handleUpdateStatus(order.id, ORDER_STATUS.PICKED_UP)}
                               >
-                                <CheckCircleIcon className="h-4 w-4 mr-1" />
                                 Mark Picked Up
                               </Button>
                             )}
@@ -260,7 +240,6 @@ const AssignedOrders = () => {
                                 fullWidth
                                 onClick={() => handleUpdateStatus(order.id, ORDER_STATUS.ON_THE_WAY)}
                               >
-                                <TruckIcon className="h-4 w-4 mr-1" />
                                 Start Delivery
                               </Button>
                             )}
@@ -272,20 +251,9 @@ const AssignedOrders = () => {
                                 fullWidth
                                 onClick={() => handleUpdateStatus(order.id, ORDER_STATUS.DELIVERED)}
                               >
-                                <CheckCircleIcon className="h-4 w-4 mr-1" />
                                 Mark Delivered
                               </Button>
                             )}
-
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              fullWidth
-                              onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.deliveryAddress)}`, '_blank')}
-                            >
-                              <TruckIcon className="h-4 w-4 mr-1" />
-                              Directions
-                            </Button>
                           </div>
                         </div>
                       </div>
@@ -316,15 +284,6 @@ const AssignedOrders = () => {
                     <ClockIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-500 text-lg">No delivery history yet</p>
                     <p className="text-sm text-gray-400 mt-2">Complete some deliveries to see them here</p>
-                    
-                    {/* Debug info - remove in production */}
-                    {process.env.NODE_ENV === 'development' && (
-                      <div className="mt-4 p-4 bg-gray-50 rounded-lg text-left">
-                        <p className="text-xs font-medium text-gray-700">Debug Info:</p>
-                        <p className="text-xs text-gray-500">User ID: {user.uid}</p>
-                        <p className="text-xs text-gray-500">Try refreshing or check console</p>
-                      </div>
-                    )}
                   </GlassCard>
                 ) : (
                   history.map((order, index) => (

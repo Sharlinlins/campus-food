@@ -16,27 +16,66 @@ export const deliveryService = {
     try {
       console.log('🔍 Fetching available delivery boys...')
       
+      // Get ALL delivery boys (not just active ones) for debugging
+      const allQuery = query(
+        collection(db, 'users'),
+        where('role', '==', 'delivery')
+      )
+      const allSnapshot = await getDocs(allQuery)
+      console.log(`📊 Total delivery boys in DB: ${allSnapshot.size}`)
+      
+      allSnapshot.forEach(doc => {
+        const data = doc.data()
+        console.log(`  - ${data.name}:`, {
+          id: doc.id,
+          status: data.status,
+          isActive: data.isActive,
+          currentOrders: data.currentOrders || 0
+        })
+      })
+
+      // Now get available ones (active AND with less than 3 orders)
       const q = query(
         collection(db, 'users'),
-        where('role', '==', 'delivery'),
-        where('isActive', '==', true)
+        where('role', '==', 'delivery')
+        // We'll filter in code because 'isActive' might be missing
       )
       
       const querySnapshot = await getDocs(q)
+      console.log(`✅ Found ${querySnapshot.size} delivery boys`)
+      
       const availableBoys = []
       
       querySnapshot.forEach(doc => {
         const boy = {
           id: doc.id,
           ...doc.data(),
-          currentOrders: doc.data().currentOrders || 0
+          currentOrders: doc.data().currentOrders || 0,
+          isActive: doc.data().isActive !== false, // Default to true if missing
+          status: doc.data().status || 'active' // Default to active if missing
         }
         
-        if (boy.currentOrders < 3) {
+        // Consider a boy available if:
+        // 1. isActive is true (or missing)
+        // 2. status is 'active' or not set
+        // 3. currentOrders < 3
+        const isAvailable = boy.isActive && 
+                           (boy.status === 'active' || !boy.status) && 
+                           boy.currentOrders < 3
+        
+        if (isAvailable) {
           availableBoys.push(boy)
+          console.log(`  ✅ Available: ${boy.name} (orders: ${boy.currentOrders}/3)`)
+        } else {
+          console.log(`  ❌ Not available: ${boy.name} -`, {
+            isActive: boy.isActive,
+            status: boy.status,
+            orders: boy.currentOrders
+          })
         }
       })
       
+      console.log(`🎯 Final available delivery boys: ${availableBoys.length}`)
       return availableBoys
       
     } catch (error) {
