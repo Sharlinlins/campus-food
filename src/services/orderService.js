@@ -10,13 +10,17 @@ import {
   where,
   orderBy,
   onSnapshot,
-  serverTimestamp
+  serverTimestamp,
+  increment
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { generateBill } from '../utils/generateBill'
 import { assignDelivery } from '../utils/assignDelivery'
 import { ORDER_STATUS } from '../utils/constants'
 import { notificationService } from './notificationService'
+
+// Constants for delivery cycle
+const DELIVERIES_PER_CYCLE = 5 // Reset after 5 deliveries
 
 // Helper function for creating notifications (defined inside the object)
 const createOrderNotification = async (orderId, newStatus, userId, userRole, orderData = {}) => {
@@ -86,51 +90,51 @@ const createOrderNotification = async (orderId, newStatus, userId, userRole, ord
 }
 
 export const orderService = {
-async createOrder(orderData) {
-  try {
-    console.log('Creating order with data:', orderData)
+  async createOrder(orderData) {
+    try {
+      console.log('Creating order with data:', orderData)
 
-    // Validate required fields
-    if (!orderData.userId) throw new Error('User ID is required')
-    if (!orderData.items || orderData.items.length === 0) throw new Error('Order must have items')
-    if (!orderData.deliveryAddress) throw new Error('Delivery address is required')
+      // Validate required fields
+      if (!orderData.userId) throw new Error('User ID is required')
+      if (!orderData.items || orderData.items.length === 0) throw new Error('Order must have items')
+      if (!orderData.deliveryAddress) throw new Error('Delivery address is required')
 
-    // Create initial status history with client timestamps as ISO strings
-    const initialHistory = [
-      {
+      // Create initial status history with client timestamps as ISO strings
+      const initialHistory = [
+        {
+          status: ORDER_STATUS.PENDING,
+          timestamp: new Date().toISOString(), // Store as ISO string, not serverTimestamp
+          note: 'Order placed'
+        }
+      ]
+
+      const order = {
+        ...orderData,
         status: ORDER_STATUS.PENDING,
-        timestamp: new Date().toISOString(), // Store as ISO string, not serverTimestamp
-        note: 'Order placed'
+        createdAt: serverTimestamp(), // This is fine for top-level
+        createdAtISO: new Date().toISOString(), // Add ISO string as backup
+        updatedAt: serverTimestamp(),
+        orderNumber: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        statusHistory: initialHistory
       }
-    ]
 
-    const order = {
-      ...orderData,
-      status: ORDER_STATUS.PENDING,
-      createdAt: serverTimestamp(), // This is fine for top-level
-      createdAtISO: new Date().toISOString(), // Add ISO string as backup
-      updatedAt: serverTimestamp(),
-      orderNumber: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      statusHistory: initialHistory
+      console.log('Saving order to Firestore...')
+      const docRef = await addDoc(collection(db, 'orders'), order)
+      console.log('Order created with ID:', docRef.id)
+
+      // Generate bill
+      const bill = generateBill({ id: docRef.id, ...order })
+      await updateDoc(docRef, { bill })
+
+      // Notify admin about new order
+      await this.notifyAdminNewOrder(docRef.id, order)
+
+      return { id: docRef.id, ...order, bill }
+    } catch (error) {
+      console.error('Error creating order:', error)
+      throw new Error(error.message || 'Failed to create order')
     }
-
-    console.log('Saving order to Firestore...')
-    const docRef = await addDoc(collection(db, 'orders'), order)
-    console.log('Order created with ID:', docRef.id)
-    
-    // Generate bill
-    const bill = generateBill({ id: docRef.id, ...order })
-    await updateDoc(docRef, { bill })
-
-    // Notify admin about new order
-    await this.notifyAdminNewOrder(docRef.id, order)
-
-    return { id: docRef.id, ...order, bill }
-  } catch (error) {
-    console.error('Error creating order:', error)
-    throw new Error(error.message || 'Failed to create order')
-  }
-},
+  },
 
   // Add this new function to notify admins
   async notifyAdminNewOrder(orderId, orderData) {
@@ -259,8 +263,20 @@ async createOrder(orderData) {
         updateData.dispatchedAt = serverTimestamp()
       } else if (newStatus === ORDER_STATUS.DELIVERED) {
         updateData.deliveredAt = serverTimestamp()
+
+        // 🔄 CRITICAL FIX: When order is delivered, decrement the delivery boy's currentOrders
+        if (orderData.deliveryBoyId) {
+          await this.decrementDeliveryBoyOrders(orderData.deliveryBoyId)
+          // Also update cycle stats
+          await this.updateDeliveryBoyAfterDelivery(orderData.deliveryBoyId)
+        }
       } else if (newStatus === ORDER_STATUS.CANCELLED) {
         updateData.cancelledAt = serverTimestamp()
+
+        // 🔄 If order is cancelled, also decrement the count
+        if (orderData.deliveryBoyId) {
+          await this.decrementDeliveryBoyOrders(orderData.deliveryBoyId)
+        }
       }
 
       // Add any additional data
@@ -294,6 +310,107 @@ async createOrder(orderData) {
     } catch (error) {
       console.error('❌ Error updating order status:', error)
       throw new Error(`Failed to update order status: ${error.message}`)
+    }
+  },
+
+  // New function to decrement delivery boy's orders
+  async decrementDeliveryBoyOrders(deliveryBoyId) {
+    try {
+      console.log(`📉 Decrementing orders for delivery boy: ${deliveryBoyId}`)
+
+      const deliveryBoyRef = doc(db, 'users', deliveryBoyId)
+      const deliveryBoyDoc = await getDoc(deliveryBoyRef)
+
+      if (!deliveryBoyDoc.exists()) {
+        console.error('Delivery boy not found')
+        return
+      }
+
+      const boyData = deliveryBoyDoc.data()
+      const currentOrders = boyData.currentOrders || 0
+
+      // Only decrement if greater than 0
+      if (currentOrders > 0) {
+        const newOrderCount = currentOrders - 1
+
+        await updateDoc(deliveryBoyRef, {
+          currentOrders: newOrderCount,
+          status: newOrderCount >= 3 ? 'busy' : 'active',
+          updatedAt: serverTimestamp()
+        })
+
+        console.log(`✅ Decremented orders from ${currentOrders} to ${newOrderCount}`)
+        console.log(`   Status updated to: ${newOrderCount >= 3 ? 'busy' : 'active'}`)
+      } else {
+        console.log('⚠️ Current orders already 0, no decrement needed')
+      }
+
+    } catch (error) {
+      console.error('Error decrementing delivery boy orders:', error)
+    }
+  },
+
+  async updateDeliveryBoyAfterDelivery(deliveryBoyId) {
+    try {
+      console.log(`📊 Updating delivery boy cycle stats after delivery: ${deliveryBoyId}`)
+
+      const deliveryBoyRef = doc(db, 'users', deliveryBoyId)
+      const deliveryBoyDoc = await getDoc(deliveryBoyRef)
+
+      if (!deliveryBoyDoc.exists()) {
+        console.error('Delivery boy not found')
+        return
+      }
+
+      const boyData = deliveryBoyDoc.data()
+      const currentCycleDeliveries = boyData.cycleDeliveries || 0
+      const newCycleCount = currentCycleDeliveries + 1
+
+      console.log(`Delivery cycle progress: ${newCycleCount}/${DELIVERIES_PER_CYCLE}`)
+
+      // Prepare update data for cycle stats only (not currentOrders)
+      const updateData = {
+        totalDeliveries: (boyData.totalDeliveries || 0) + 1,
+        cycleDeliveries: newCycleCount,
+        updatedAt: serverTimestamp()
+      }
+
+      // Check if cycle is complete
+      if (newCycleCount >= DELIVERIES_PER_CYCLE) {
+        console.log('🎯 Delivery cycle complete! Resetting for next cycle...')
+
+        updateData.cycleDeliveries = 0
+        updateData.cyclesCompleted = (boyData.cyclesCompleted || 0) + 1
+        updateData.lastCycleCompletedAt = serverTimestamp()
+        updateData.totalEarnings = (boyData.totalEarnings || 0) + 50 // ₹50 bonus
+
+        await this.notifyDeliveryBoyCycleComplete(deliveryBoyId, boyData.name || 'Delivery Partner')
+      }
+
+      await updateDoc(deliveryBoyRef, updateData)
+      console.log('✅ Delivery boy cycle stats updated successfully')
+
+    } catch (error) {
+      console.error('Error updating delivery boy after delivery:', error)
+    }
+  },
+
+  // Notify delivery boy when cycle completes
+  async notifyDeliveryBoyCycleComplete(deliveryBoyId, boyName) {
+    try {
+      await notificationService.createNotification(deliveryBoyId, {
+        title: '🎉 Delivery Cycle Complete!',
+        body: `Congratulations! You've completed ${DELIVERIES_PER_CYCLE} deliveries. You've earned a ₹50 bonus! Ready for the next cycle!`,
+        type: 'cycle_complete',
+        data: {
+          bonus: 50,
+          cycleCount: DELIVERIES_PER_CYCLE,
+          url: '/delivery'
+        }
+      })
+      console.log('✅ Cycle completion notification sent')
+    } catch (error) {
+      console.error('Error sending cycle completion notification:', error)
     }
   },
 
@@ -422,37 +539,29 @@ async createOrder(orderData) {
     }
   },
 
-  async cancelOrder(orderId, reason) {
-    try {
-      const orderRef = doc(db, 'orders', orderId)
-      const orderDoc = await getDoc(orderRef)
+async cancelOrder(orderId, reason) {
+  try {
+    const orderRef = doc(db, 'orders', orderId)
+    const orderDoc = await getDoc(orderRef)
 
-      if (!orderDoc.exists()) {
-        throw new Error('Order not found')
-      }
-
-      const orderData = orderDoc.data()
-
-      // If order was assigned, update delivery boy's count
-      if (orderData.deliveryBoyId) {
-        const deliveryBoyRef = doc(db, 'users', orderData.deliveryBoyId)
-        const deliveryBoyDoc = await getDoc(deliveryBoyRef)
-
-        if (deliveryBoyDoc.exists()) {
-          const currentOrders = deliveryBoyDoc.data().currentOrders || 0
-          await updateDoc(deliveryBoyRef, {
-            currentOrders: Math.max(0, currentOrders - 1),
-            updatedAt: serverTimestamp()
-          })
-        }
-      }
-
-      return await this.updateOrderStatus(orderId, ORDER_STATUS.CANCELLED, { reason })
-    } catch (error) {
-      console.error('Error cancelling order:', error)
-      throw new Error('Failed to cancel order')
+    if (!orderDoc.exists()) {
+      throw new Error('Order not found')
     }
-  },
+
+    const orderData = orderDoc.data()
+
+    // If order was assigned, decrement delivery boy's count
+    if (orderData.deliveryBoyId && 
+        [ORDER_STATUS.ASSIGNED, ORDER_STATUS.PICKED_UP, ORDER_STATUS.ON_THE_WAY].includes(orderData.status)) {
+      await this.decrementDeliveryBoyOrders(orderData.deliveryBoyId)
+    }
+
+    return await this.updateOrderStatus(orderId, ORDER_STATUS.CANCELLED, { reason })
+  } catch (error) {
+    console.error('Error cancelling order:', error)
+    throw new Error('Failed to cancel order')
+  }
+},
 
   subscribeToOrders(callback, filters = {}) {
     let q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'))

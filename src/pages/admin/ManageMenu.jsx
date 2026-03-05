@@ -8,6 +8,7 @@ import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase
 import { PencilIcon, TrashIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { FOOD_CATEGORIES } from '../../utils/constants'
 import toast from 'react-hot-toast'
+import { formatCurrency } from '../../utils/formatDate'
 
 const ManageMenu = () => {
   const [foods, setFoods] = useState([])
@@ -191,7 +192,7 @@ const ManageMenu = () => {
                 <div className="p-4">
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="text-lg font-semibold">{food.name}</h3>
-                    <span className="text-primary-600 font-bold">${food.price}</span>
+                    <span className="text-primary-600 font-bold">{formatCurrency(food.price)}</span>
                   </div>
                   <p className="text-sm text-gray-600 mb-3 line-clamp-2">{food.description}</p>
                   <div className="flex items-center justify-between">
@@ -275,7 +276,7 @@ const ManageMenu = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Price ($) *
+                        Price (₹) *
                       </label>
                       <input
                         type="number"

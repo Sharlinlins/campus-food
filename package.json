@@ -13,7 +13,12 @@
     "fix:order": "node src/scripts/fixOrderStatusHistory.js",
     "reset:mike": "node src/scripts/resetDeliveryBoyOrders.js",
     "create:more": "node src/scripts/createMoreDeliveryBoys.js",
-    "check:orders": "node src/scripts/checkDeliveryBoyOrders.js"
+    "check:orders": "node src/scripts/checkDeliveryBoyOrders.js",
+    "add:cycle-fields": "node src/scripts/addDeliveryCycleFields.js",
+    "create:delivery": "node src/scripts/createMoreDeliveryBoys.js",
+    "fix:delivery": "node src/scripts/fixDeliveryBoys.js",
+    "check:delivery": "node src/scripts/checkDeliveryBoys.js",
+    "reset:counters": "node src/scripts/resetDeliveryBoyCounters.js"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

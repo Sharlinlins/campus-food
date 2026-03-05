@@ -16,61 +16,72 @@ export const deliveryService = {
     try {
       console.log('🔍 Fetching available delivery boys...')
       
-      // Get ALL delivery boys (not just active ones) for debugging
-      const allQuery = query(
-        collection(db, 'users'),
-        where('role', '==', 'delivery')
-      )
-      const allSnapshot = await getDocs(allQuery)
-      console.log(`📊 Total delivery boys in DB: ${allSnapshot.size}`)
-      
-      allSnapshot.forEach(doc => {
-        const data = doc.data()
-        console.log(`  - ${data.name}:`, {
-          id: doc.id,
-          status: data.status,
-          isActive: data.isActive,
-          currentOrders: data.currentOrders || 0
-        })
-      })
-
-      // Now get available ones (active AND with less than 3 orders)
+      // Get ALL delivery boys - we'll filter in code for maximum flexibility
       const q = query(
         collection(db, 'users'),
         where('role', '==', 'delivery')
-        // We'll filter in code because 'isActive' might be missing
       )
       
       const querySnapshot = await getDocs(q)
-      console.log(`✅ Found ${querySnapshot.size} delivery boys`)
+      console.log(`📊 Total delivery boys in database: ${querySnapshot.size}`)
+      
+      if (querySnapshot.empty) {
+        console.log('❌ No delivery boys found in database')
+        return []
+      }
+      
+      // Log each delivery boy for debugging
+      querySnapshot.forEach(doc => {
+        const data = doc.data()
+        console.log(`Found delivery boy:`, {
+          id: doc.id,
+          name: data.name,
+          email: data.email,
+          status: data.status,
+          isActive: data.isActive,
+          currentOrders: data.currentOrders
+        })
+      })
       
       const availableBoys = []
       
       querySnapshot.forEach(doc => {
-        const boy = {
-          id: doc.id,
-          ...doc.data(),
-          currentOrders: doc.data().currentOrders || 0,
-          isActive: doc.data().isActive !== false, // Default to true if missing
-          status: doc.data().status || 'active' // Default to active if missing
-        }
+        const boyData = doc.data()
         
-        // Consider a boy available if:
-        // 1. isActive is true (or missing)
-        // 2. status is 'active' or not set
+        // Default values if fields are missing
+        const isActive = boyData.isActive !== false // Default to true if not set
+        const status = boyData.status || 'active' // Default to active if not set
+        const currentOrders = boyData.currentOrders || 0
+        const hasRequiredFields = boyData.name && boyData.email
+        
+        // A boy is available if:
+        // 1. isActive is true (or not set)
+        // 2. status is 'active' (or not set)
         // 3. currentOrders < 3
-        const isAvailable = boy.isActive && 
-                           (boy.status === 'active' || !boy.status) && 
-                           boy.currentOrders < 3
+        // 4. Has required fields (name, email)
+        const isAvailable = isActive && 
+                           status === 'active' && 
+                           currentOrders < 3 &&
+                           hasRequiredFields
         
         if (isAvailable) {
-          availableBoys.push(boy)
-          console.log(`  ✅ Available: ${boy.name} (orders: ${boy.currentOrders}/3)`)
+          availableBoys.push({
+            id: doc.id,
+            name: boyData.name,
+            email: boyData.email,
+            phone: boyData.phone || '',
+            vehicleType: boyData.vehicleType || 'bike',
+            currentOrders,
+            status: 'active',
+            isActive: true
+          })
+          console.log(`  ✅ Available: ${boyData.name} (orders: ${currentOrders}/3)`)
         } else {
-          console.log(`  ❌ Not available: ${boy.name} -`, {
-            isActive: boy.isActive,
-            status: boy.status,
-            orders: boy.currentOrders
+          console.log(`  ❌ Not available: ${boyData.name || 'Unnamed'}`, {
+            reason: !isActive ? 'inactive' : 
+                    status !== 'active' ? `status=${status}` :
+                    currentOrders >= 3 ? `orders=${currentOrders}` :
+                    !hasRequiredFields ? 'missing name/email' : 'unknown'
           })
         }
       })
@@ -81,6 +92,39 @@ export const deliveryService = {
     } catch (error) {
       console.error('❌ Error fetching delivery boys:', error)
       return []
+    }
+  },
+
+  // Function to get delivery boy by ID
+  async getDeliveryBoyById(deliveryBoyId) {
+    try {
+      const docRef = doc(db, 'users', deliveryBoyId)
+      const docSnap = await getDoc(docRef)
+      
+      if (docSnap.exists()) {
+        return {
+          id: docSnap.id,
+          ...docSnap.data()
+        }
+      }
+      return null
+    } catch (error) {
+      console.error('Error fetching delivery boy:', error)
+      return null
+    }
+  },
+
+  async updateDeliveryLocation(deliveryBoyId, location) {
+    try {
+      const deliveryBoyRef = doc(db, 'users', deliveryBoyId)
+      await updateDoc(deliveryBoyRef, {
+        currentLocation: location,
+        lastLocationUpdate: Timestamp.now()
+      })
+      return true
+    } catch (error) {
+      console.error('Error updating location:', error)
+      throw new Error('Failed to update location')
     }
   },
 
@@ -101,7 +145,6 @@ export const deliveryService = {
       )
       
       const querySnapshot = await getDocs(ordersQuery)
-      console.log(`Total orders found: ${querySnapshot.size}`)
       
       let totalDeliveries = 0
       let todayDeliveries = 0
@@ -111,26 +154,42 @@ export const deliveryService = {
       
       querySnapshot.forEach(doc => {
         const order = doc.data()
-        const orderDate = order.deliveredAt?.toDate?.() || 
-                         (order.deliveredAt ? new Date(order.deliveredAt) : null)
         
-        // Count all delivered orders
+        // Handle different date formats
+        let deliveredDate = null
+        if (order.deliveredAt) {
+          if (typeof order.deliveredAt.toDate === 'function') {
+            deliveredDate = order.deliveredAt.toDate()
+          } else if (order.deliveredAt instanceof Date) {
+            deliveredDate = order.deliveredAt
+          } else if (typeof order.deliveredAt === 'string') {
+            deliveredDate = new Date(order.deliveredAt)
+          }
+        }
+        
         if (order.status === 'delivered') {
           totalDeliveries++
           
-          // Check if delivered today
-          if (orderDate && orderDate >= today && orderDate < tomorrow) {
+          if (deliveredDate && deliveredDate >= today && deliveredDate < tomorrow) {
             todayDeliveries++
-            console.log(`✅ Today's delivery: ${order.orderNumber || doc.id} at ${orderDate}`)
           }
           
           // Calculate delivery time for average
           if (order.assignedAt && order.deliveredAt) {
-            const assignedTime = order.assignedAt?.toDate?.() || new Date(order.assignedAt)
-            const deliveredTime = order.deliveredAt?.toDate?.() || new Date(order.deliveredAt)
-            const deliveryTime = (deliveredTime - assignedTime) / (1000 * 60) // in minutes
-            totalDeliveryTime += deliveryTime
-            deliveredCount++
+            let assignedTime = null
+            if (typeof order.assignedAt.toDate === 'function') {
+              assignedTime = order.assignedAt.toDate()
+            } else if (order.assignedAt instanceof Date) {
+              assignedTime = order.assignedAt
+            } else if (typeof order.assignedAt === 'string') {
+              assignedTime = new Date(order.assignedAt)
+            }
+            
+            if (assignedTime && deliveredDate) {
+              const deliveryTime = (deliveredDate - assignedTime) / (1000 * 60) // minutes
+              totalDeliveryTime += deliveryTime
+              deliveredCount++
+            }
           }
           
           // Add earnings (delivery fee)
@@ -149,18 +208,10 @@ export const deliveryService = {
       const activeSnapshot = await getDocs(activeOrdersQuery)
       const activeOrders = activeSnapshot.size
       
-      console.log('Stats calculated:', {
-        totalDeliveries,
-        todayDeliveries,
-        totalEarnings,
-        averageDeliveryTime,
-        activeOrders
-      })
-      
-      // Get delivery boy's rating from user document
+      // Get delivery boy's user data for cycle info
       const userRef = doc(db, 'users', deliveryBoyId)
       const userDoc = await getDoc(userRef)
-      const rating = userDoc.exists() ? (userDoc.data().rating || 4.5) : 4.5
+      const userData = userDoc.exists() ? userDoc.data() : {}
       
       const stats = {
         totalDeliveries,
@@ -168,10 +219,12 @@ export const deliveryService = {
         totalEarnings,
         averageDeliveryTime: Math.round(averageDeliveryTime * 10) / 10,
         activeOrders,
-        rating
+        rating: userData.rating || 4.5,
+        cycleDeliveries: userData.cycleDeliveries || 0,
+        cyclesCompleted: userData.cyclesCompleted || 0
       }
       
-      console.log('Final stats:', stats)
+      console.log('Stats calculated:', stats)
       return stats
       
     } catch (error) {
@@ -182,22 +235,10 @@ export const deliveryService = {
         totalEarnings: 0,
         averageDeliveryTime: 0,
         activeOrders: 0,
-        rating: 4.5
+        rating: 4.5,
+        cycleDeliveries: 0,
+        cyclesCompleted: 0
       }
-    }
-  },
-
-  async updateDeliveryLocation(deliveryBoyId, location) {
-    try {
-      const deliveryBoyRef = doc(db, 'users', deliveryBoyId)
-      await updateDoc(deliveryBoyRef, {
-        currentLocation: location,
-        lastLocationUpdate: Timestamp.now()
-      })
-      return true
-    } catch (error) {
-      console.error('Error updating location:', error)
-      throw new Error('Failed to update location')
     }
   },
 

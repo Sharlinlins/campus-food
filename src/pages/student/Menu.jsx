@@ -4,6 +4,7 @@ import FoodCard from '../../components/food/FoodCard'
 import Navbar from '../../components/layout/Navbar'
 import GlassCard from '../../components/ui/GlassCard'
 import { MagnifyingGlassIcon, FunnelIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { formatCurrency } from '../../utils/formatDate'
 
 // Sample food data (replace with Firebase data later)
 const sampleFoods = [
@@ -225,7 +226,7 @@ const Menu = () => {
                     {/* Price Range */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Price Range (${priceRange.min} - ${priceRange.max})
+                        Price Range ({formatCurrency(priceRange.min)} - {formatCurrency(priceRange.max)})
                       </label>
                       <div className="flex gap-2">
                         <input

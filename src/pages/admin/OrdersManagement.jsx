@@ -18,6 +18,7 @@ import {
   UserIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
+import { formatCurrency } from '../../utils/formatDate'
 
 const OrdersManagement = () => {
   const [orders, setOrders] = useState([])
@@ -271,7 +272,7 @@ const OrdersManagement = () => {
 
                       <div className="text-right">
                         <p className="text-2xl font-bold text-primary-600">
-                          ${order.total?.toFixed(2) || '0.00'}
+                          {formatCurrency(order.total || '0.00')}
                         </p>
                         <p className="text-sm text-gray-500">
                           {order.items?.length || 0} items
@@ -285,7 +286,7 @@ const OrdersManagement = () => {
                       <div className="space-y-1">
                         {order.items?.slice(0, 3).map((item, i) => (
                           <p key={i} className="text-sm text-gray-600">
-                            {item.quantity}x {item.name} - ${(item.price * item.quantity).toFixed(2)}
+                            {item.quantity}x {item.name} - {formatCurrency(item.price * item.quantity)}
                           </p>
                         ))}
                         {order.items?.length > 3 && (
@@ -540,7 +541,7 @@ const OrdersManagement = () => {
                             <p className="font-medium">{item.name}</p>
                             <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
                           </div>
-                          <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+                          <p className="font-medium">{formatCurrency(item.price * item.quantity)}</p>
                         </div>
                       ))}
                     </div>
@@ -550,19 +551,19 @@ const OrdersManagement = () => {
                     <div className="space-y-1">
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Subtotal</span>
-                        <span>${selectedOrder.subtotal?.toFixed(2) || '0.00'}</span>
+                        <span>{formatCurrency(selectedOrder.subtotal || '0.00')}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Tax</span>
-                        <span>${selectedOrder.tax?.toFixed(2) || '0.00'}</span>
+                        <span>{formatCurrency(selectedOrder.tax || '0.00')}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Delivery Fee</span>
-                        <span>${selectedOrder.deliveryFee?.toFixed(2) || '0.00'}</span>
+                        <span>{formatCurrency(selectedOrder.deliveryFee || '0.00')}</span>
                       </div>
                       <div className="flex justify-between font-bold text-lg pt-2">
                         <span>Total</span>
-                        <span className="text-primary-600">${selectedOrder.total?.toFixed(2) || '0.00'}</span>
+                        <span className="text-primary-600">{formatCurrency(selectedOrder.total || '0.00')}</span>
                       </div>
                     </div>
                   </div>

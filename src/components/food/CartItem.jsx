@@ -59,7 +59,7 @@ const CartItem = ({ item }) => {
       {/* Item Total */}
       <div className="text-right min-w-[80px]">
         <p className="font-bold text-primary-600">
-          ${(item.price * item.quantity).toFixed(2)}
+          {formatCurrency(item.price * item.quantity)}
         </p>
       </div>
     </motion.div>
