@@ -13,6 +13,79 @@
   body {
     @apply font-sans antialiased text-gray-900 bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen;
   }
+
+  /* Responsive font sizes - Mobile first approach */
+  html {
+    font-size: 16px; /* Base size for mobile */
+  }
+
+  @media (min-width: 768px) {
+    html {
+      font-size: 18px; /* Slightly larger for tablets */
+    }
+  }
+
+  @media (min-width: 1024px) {
+    html {
+      font-size: 20px; /* Desktop size */
+    }
+  }
+
+  /* Scale down all text on mobile to 80% of desktop */
+  @media (max-width: 640px) {
+    html {
+      font-size: 14px; /* ~80% of 18px */
+    }
+    
+    h1 {
+      font-size: 1.8rem;
+    }
+    
+    h2 {
+      font-size: 1.5rem;
+    }
+    
+    h3 {
+      font-size: 1.2rem;
+    }
+    
+    p, span, div, button, input, select, textarea {
+      font-size: 0.9rem;
+    }
+    
+    /* Specific component adjustments */
+    .text-xs {
+      font-size: 0.7rem;
+    }
+    
+    .text-sm {
+      font-size: 0.8rem;
+    }
+    
+    .text-base {
+      font-size: 0.9rem;
+    }
+    
+    .text-lg {
+      font-size: 1rem;
+    }
+    
+    .text-xl {
+      font-size: 1.1rem;
+    }
+    
+    .text-2xl {
+      font-size: 1.3rem;
+    }
+    
+    .text-3xl {
+      font-size: 1.5rem;
+    }
+    
+    .text-4xl {
+      font-size: 1.8rem;
+    }
+  }
 }
 
 @layer components {
@@ -25,11 +98,21 @@
   }
 
   .btn-secondary {
-    @apply bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gray-400;
+    @apply bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-all duration-300;
   }
 
   .input-field {
-    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300;
+    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+  }
+
+  /* Mobile-optimized cards */
+  .mobile-card {
+    @apply p-3 md:p-6;
+  }
+
+  /* Mobile-optimized buttons */
+  .mobile-btn {
+    @apply px-3 py-1.5 text-sm md:px-4 md:py-2 md:text-base;
   }
 }
 
@@ -58,5 +141,26 @@
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+
+  /* Mobile-specific utilities */
+  .mobile-text-small {
+    @apply text-xs md:text-sm;
+  }
+
+  .mobile-text-normal {
+    @apply text-sm md:text-base;
+  }
+
+  .mobile-text-large {
+    @apply text-base md:text-lg;
+  }
+
+  .mobile-heading {
+    @apply text-lg md:text-2xl font-bold;
+  }
+
+  .mobile-subheading {
+    @apply text-base md:text-xl font-semibold;
   }
 }

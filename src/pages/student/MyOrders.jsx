@@ -1,198 +1,254 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../../context/AuthContext'
-import Navbar from '../../components/layout/Navbar'
-import OrderCard from '../../components/food/OrderCard'
-import GlassCard from '../../components/ui/GlassCard'
-import Button from '../../components/ui/Button'
-import { orderService } from '../../services/orderService'
-import { ORDER_STATUS, ORDER_STATUS_LABELS } from '../../utils/constants'
-import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  ClockIcon, 
-  CheckCircleIcon, 
-  XCircleIcon, 
+import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import Navbar from "../../components/layout/Navbar";
+import OrderCard from "../../components/food/OrderCard";
+import GlassCard from "../../components/ui/GlassCard";
+import Button from "../../components/ui/Button";
+import { orderService } from "../../services/orderService";
+import { ORDER_STATUS, ORDER_STATUS_LABELS } from "../../utils/constants";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ClockIcon,
+  CheckCircleIcon,
+  XCircleIcon,
   TruckIcon,
   FireIcon,
   CubeIcon,
   ShoppingBagIcon,
-  ArchiveBoxIcon
-} from '@heroicons/react/24/outline'
+  ArchiveBoxIcon,
+} from "@heroicons/react/24/outline";
 
 const MyOrders = () => {
-  const [orders, setOrders] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('all')
-  const { user } = useAuth()
-  const navigate = useNavigate()
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("all");
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Fetch orders
   const fetchOrders = useCallback(async () => {
-    if (!user) return
-    setLoading(true)
+    if (!user) return;
+    setLoading(true);
     try {
-      console.log('Fetching orders for user:', user.uid)
-      const userOrders = await orderService.getOrders(user.uid, 'student')
-      console.log('Orders fetched:', userOrders.length)
-      setOrders(userOrders)
+      console.log("Fetching orders for user:", user.uid);
+      const userOrders = await orderService.getOrders(user.uid, "student");
+      console.log("Orders fetched:", userOrders.length);
+      setOrders(userOrders);
     } catch (error) {
-      console.error('Error fetching orders:', error)
+      console.error("Error fetching orders:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [user])
+  }, [user]);
 
   useEffect(() => {
-    fetchOrders()
-    
+    fetchOrders();
+
     // Set up real-time listener for order updates
-    let unsubscribe
+    let unsubscribe;
     if (user) {
-      unsubscribe = orderService.subscribeToOrders((updatedOrders) => {
-        const myOrders = updatedOrders.filter(o => o.userId === user.uid)
-        setOrders(myOrders)
-      }, { userId: user.uid })
+      unsubscribe = orderService.subscribeToOrders(
+        (updatedOrders) => {
+          const myOrders = updatedOrders.filter((o) => o.userId === user.uid);
+          setOrders(myOrders);
+        },
+        { userId: user.uid },
+      );
     }
-    
+
     return () => {
-      if (unsubscribe) unsubscribe()
-    }
-  }, [user, fetchOrders])
+      if (unsubscribe) unsubscribe();
+    };
+  }, [user, fetchOrders]);
 
   // Filter orders based on selected filter
-  const filteredOrders = orders.filter(order => {
-    if (filter === 'all') return true
-    if (filter === 'active') {
-      return ![ORDER_STATUS.DELIVERED, ORDER_STATUS.CANCELLED].includes(order.status)
+  const filteredOrders = orders.filter((order) => {
+    if (filter === "all") return true;
+    if (filter === "active") {
+      return ![ORDER_STATUS.DELIVERED, ORDER_STATUS.CANCELLED].includes(
+        order.status,
+      );
     }
-    if (filter === 'completed') {
-      return [ORDER_STATUS.DELIVERED, ORDER_STATUS.CANCELLED].includes(order.status)
+    if (filter === "completed") {
+      return [ORDER_STATUS.DELIVERED, ORDER_STATUS.CANCELLED].includes(
+        order.status,
+      );
     }
-    return order.status === filter
-  })
+    return order.status === filter;
+  });
 
   // Separate orders for summary
-  const activeOrders = orders.filter(o => 
-    ![ORDER_STATUS.DELIVERED, ORDER_STATUS.CANCELLED].includes(o.status)
-  )
-  const completedOrders = orders.filter(o => 
-    [ORDER_STATUS.DELIVERED, ORDER_STATUS.CANCELLED].includes(o.status)
-  )
+  const activeOrders = orders.filter(
+    (o) => ![ORDER_STATUS.DELIVERED, ORDER_STATUS.CANCELLED].includes(o.status),
+  );
+  const completedOrders = orders.filter((o) =>
+    [ORDER_STATUS.DELIVERED, ORDER_STATUS.CANCELLED].includes(o.status),
+  );
 
   // Get appropriate icon for each status
   const getStatusIcon = (status) => {
-    switch(status) {
+    switch (status) {
       case ORDER_STATUS.PENDING:
       case ORDER_STATUS.CONFIRMED:
       case ORDER_STATUS.PREPARING:
-        return <ClockIcon className="h-5 w-5" />
+        return <ClockIcon className="h-5 w-5" />;
       case ORDER_STATUS.READY:
-        return <CheckCircleIcon className="h-5 w-5" />
+        return <CheckCircleIcon className="h-5 w-5" />;
       case ORDER_STATUS.ASSIGNED:
       case ORDER_STATUS.PICKED_UP:
-        return <CubeIcon className="h-5 w-5" />
+        return <CubeIcon className="h-5 w-5" />;
       case ORDER_STATUS.ON_THE_WAY:
-        return <TruckIcon className="h-5 w-5" />
+        return <TruckIcon className="h-5 w-5" />;
       case ORDER_STATUS.DELIVERED:
-        return <CheckCircleIcon className="h-5 w-5" />
+        return <CheckCircleIcon className="h-5 w-5" />;
       case ORDER_STATUS.CANCELLED:
-        return <XCircleIcon className="h-5 w-5" />
+        return <XCircleIcon className="h-5 w-5" />;
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   // Define filters with their properties
   const filters = [
-    { value: 'all', label: 'All Orders', icon: ShoppingBagIcon, count: orders.length },
-    { value: 'active', label: 'Active', icon: FireIcon, count: activeOrders.length },
-    { value: 'completed', label: 'Completed', icon: ArchiveBoxIcon, count: completedOrders.length },
-    { value: 'pending', label: 'Pending', icon: ClockIcon, count: orders.filter(o => o.status === ORDER_STATUS.PENDING).length },
-    { value: 'on_the_way', label: 'On The Way', icon: TruckIcon, count: orders.filter(o => o.status === ORDER_STATUS.ON_THE_WAY).length },
-    { value: 'delivered', label: 'Delivered', icon: CheckCircleIcon, count: orders.filter(o => o.status === ORDER_STATUS.DELIVERED).length },
-    { value: 'cancelled', label: 'Cancelled', icon: XCircleIcon, count: orders.filter(o => o.status === ORDER_STATUS.CANCELLED).length }
-  ]
+    {
+      value: "all",
+      label: "All Orders",
+      icon: ShoppingBagIcon,
+      count: orders.length,
+    },
+    {
+      value: "active",
+      label: "Active",
+      icon: FireIcon,
+      count: activeOrders.length,
+    },
+    {
+      value: "completed",
+      label: "Completed",
+      icon: ArchiveBoxIcon,
+      count: completedOrders.length,
+    },
+    {
+      value: "pending",
+      label: "Pending",
+      icon: ClockIcon,
+      count: orders.filter((o) => o.status === ORDER_STATUS.PENDING).length,
+    },
+    {
+      value: "on_the_way",
+      label: "On The Way",
+      icon: TruckIcon,
+      count: orders.filter((o) => o.status === ORDER_STATUS.ON_THE_WAY).length,
+    },
+    {
+      value: "delivered",
+      label: "Delivered",
+      icon: CheckCircleIcon,
+      count: orders.filter((o) => o.status === ORDER_STATUS.DELIVERED).length,
+    },
+    {
+      value: "cancelled",
+      label: "Cancelled",
+      icon: XCircleIcon,
+      count: orders.filter((o) => o.status === ORDER_STATUS.CANCELLED).length,
+    },
+  ];
 
   const handleViewDetails = (order) => {
-    navigate(`/order-tracking/${order.id}`)
-  }
+    navigate(`/order-tracking/${order.id}`);
+  };
 
   // Get count for each filter
   const getFilterCount = (filterValue) => {
-    if (filterValue === 'all') return orders.length
-    if (filterValue === 'active') return activeOrders.length
-    if (filterValue === 'completed') return completedOrders.length
-    return orders.filter(o => o.status === filterValue).length
-  }
+    if (filterValue === "all") return orders.length;
+    if (filterValue === "active") return activeOrders.length;
+    if (filterValue === "completed") return completedOrders.length;
+    return orders.filter((o) => o.status === filterValue).length;
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <Navbar />
-      
-      <div className="container-custom py-8">
+
+      <div className="container-custom py-4 md:py-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
+          className="mb-4 md:mb-8"
         >
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">My Orders</h1>
-          <p className="text-gray-600">Track and manage your food orders</p>
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800 mb-1 md:mb-2">
+            My Orders
+          </h1>
+          <p className="text-sm md:text-base text-gray-600">
+            Track and manage your food orders
+          </p>
         </motion.div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <GlassCard className="p-4 text-center">
-            <p className="text-2xl font-bold text-primary-600">{orders.length}</p>
-            <p className="text-sm text-gray-600">Total Orders</p>
+        <div className="grid grid-cols-3 gap-2 md:gap-4 mb-4 md:mb-6">
+          <GlassCard className="p-2 md:p-4 text-center">
+            <p className="text-lg md:text-2xl font-bold text-primary-600">
+              {orders.length}
+            </p>
+            <p className="text-[10px] md:text-sm text-gray-600">Total</p>
           </GlassCard>
-          <GlassCard className="p-4 text-center">
-            <p className="text-2xl font-bold text-green-600">{activeOrders.length}</p>
-            <p className="text-sm text-gray-600">Active Orders</p>
+          <GlassCard className="p-2 md:p-4 text-center">
+            <p className="text-lg md:text-2xl font-bold text-green-600">
+              {activeOrders.length}
+            </p>
+            <p className="text-[10px] md:text-sm text-gray-600">Active</p>
           </GlassCard>
-          <GlassCard className="p-4 text-center">
-            <p className="text-2xl font-bold text-purple-600">{completedOrders.length}</p>
-            <p className="text-sm text-gray-600">Completed Orders</p>
+          <GlassCard className="p-2 md:p-4 text-center">
+            <p className="text-lg md:text-2xl font-bold text-purple-600">
+              {completedOrders.length}
+            </p>
+            <p className="text-[10px] md:text-sm text-gray-600">Completed</p>
           </GlassCard>
         </div>
 
         {/* Filters with counts */}
-        <div className="mb-8 overflow-x-auto pb-2 scrollbar-hide">
-          <div className="flex gap-2 min-w-max">
+        <div className="mb-4 md:mb-8 overflow-x-auto pb-2 scrollbar-hide">
+          <div className="flex gap-1 md:gap-2 min-w-max">
             {filters.map((f) => {
-              const Icon = f.icon
-              const count = getFilterCount(f.value)
-              
-              // Only show filters with count > 0 or 'all' filter
-              if (f.value !== 'all' && count === 0) return null
-              
+              const Icon = f.icon;
+              const count = getFilterCount(f.value);
+
+              if (f.value !== "all" && count === 0) return null;
+
               return (
                 <button
                   key={f.value}
                   onClick={() => setFilter(f.value)}
                   className={`
-                    px-4 py-2 rounded-full flex items-center gap-2 transition-all whitespace-nowrap
-                    ${filter === f.value
-                      ? 'bg-primary-600 text-white shadow-lg shadow-primary-200'
-                      : 'bg-white text-gray-600 hover:bg-gray-100'
-                    }
-                  `}
+              px-2 md:px-4 py-1 md:py-2 rounded-full flex items-center gap-1 md:gap-2 transition-all whitespace-nowrap
+              text-xs md:text-sm
+              ${
+                filter === f.value
+                  ? "bg-primary-600 text-white shadow-lg shadow-primary-200"
+                  : "bg-white text-gray-600 hover:bg-gray-100"
+              }
+            `}
                 >
-                  {Icon && <Icon className="h-5 w-5" />}
+                  {Icon && <Icon className="h-3 w-3 md:h-5 md:w-5" />}
                   <span>{f.label}</span>
                   {count > 0 && (
-                    <span className={`
-                      ml-1 px-2 py-0.5 rounded-full text-xs
-                      ${filter === f.value
-                        ? 'bg-white text-primary-600'
-                        : 'bg-gray-200 text-gray-600'
-                      }
-                    `}>
+                    <span
+                      className={`
+                ml-1 px-1 md:px-2 py-0.5 rounded-full text-[10px] md:text-xs
+                ${
+                  filter === f.value
+                    ? "bg-white text-primary-600"
+                    : "bg-gray-200 text-gray-600"
+                }
+              `}
+                    >
                       {count}
                     </span>
                   )}
                 </button>
-              )
+              );
             })}
           </div>
         </div>
@@ -223,13 +279,13 @@ const MyOrders = () => {
                   <ShoppingBagIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500 text-lg mb-2">No orders found</p>
                   <p className="text-gray-400 text-sm mb-6">
-                    {filter === 'all' 
-                      ? "You haven't placed any orders yet" 
-                      : filter === 'completed'
-                      ? "You don't have any completed orders yet"
-                      : `No ${filter} orders at the moment`}
+                    {filter === "all"
+                      ? "You haven't placed any orders yet"
+                      : filter === "completed"
+                        ? "You don't have any completed orders yet"
+                        : `No ${filter} orders at the moment`}
                   </p>
-                  <Button onClick={() => navigate('/menu')} variant="primary">
+                  <Button onClick={() => navigate("/menu")} variant="primary">
                     Browse Menu
                   </Button>
                 </GlassCard>
@@ -262,27 +318,39 @@ const MyOrders = () => {
         )}
 
         {/* Debug Info - Remove in production */}
-        {process.env.NODE_ENV === 'development' && (
+        {process.env.NODE_ENV === "development" && (
           <div className="mt-8 p-4 bg-gray-100 rounded-lg">
             <p className="text-sm font-medium text-gray-700">Debug Info:</p>
-            <p className="text-xs text-gray-600">Total Orders: {orders.length}</p>
-            <p className="text-xs text-gray-600">Active Orders: {activeOrders.length}</p>
-            <p className="text-xs text-gray-600">Completed Orders: {completedOrders.length}</p>
+            <p className="text-xs text-gray-600">
+              Total Orders: {orders.length}
+            </p>
+            <p className="text-xs text-gray-600">
+              Active Orders: {activeOrders.length}
+            </p>
+            <p className="text-xs text-gray-600">
+              Completed Orders: {completedOrders.length}
+            </p>
             <details className="mt-2">
-              <summary className="text-xs text-primary-600 cursor-pointer">View Orders</summary>
+              <summary className="text-xs text-primary-600 cursor-pointer">
+                View Orders
+              </summary>
               <pre className="text-xs mt-2 bg-gray-800 text-white p-2 rounded overflow-auto">
-                {JSON.stringify(orders.map(o => ({ 
-                  id: o.id, 
-                  status: o.status,
-                  total: o.total 
-                })), null, 2)}
+                {JSON.stringify(
+                  orders.map((o) => ({
+                    id: o.id,
+                    status: o.status,
+                    total: o.total,
+                  })),
+                  null,
+                  2,
+                )}
               </pre>
             </details>
           </div>
         )}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default MyOrders
+export default MyOrders;
