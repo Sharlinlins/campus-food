@@ -7,6 +7,7 @@ import GlassCard from "../../components/ui/GlassCard";
 import Button from "../../components/ui/Button";
 import CartItem from "../../components/food/CartItem";
 import { orderService } from "../../services/orderService";
+import { formatCurrency } from "../../utils/formatDate";
 import {
   TrashIcon,
   CreditCardIcon,
@@ -15,7 +16,6 @@ import {
   MapPinIcon,
 } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
-import { formatCurrency } from '../../utils/formatDate'
 import toast from "react-hot-toast";
 
 const Cart = () => {
@@ -48,7 +48,7 @@ const Cart = () => {
             setLocation({ lat: latitude, lng: longitude });
             toast.success("Location captured successfully");
 
-            // Reverse geocode to get address (optional)
+            // Reverse geocode to get address
             fetch(
               `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
             )
@@ -84,11 +84,13 @@ const Cart = () => {
 
     if (!phoneNumber.trim()) {
       setError("Please enter phone number");
-      toast.error("Please enter phone number for delivery updates");
+      toast.error("Phone number is required for delivery");
       return;
     }
 
-    if (!/^[0-9]{10}$/.test(phoneNumber.replace(/\D/g, ""))) {
+    // Validate phone number (10 digits)
+    const cleanPhone = phoneNumber.replace(/\D/g, "");
+    if (!/^\d{10}$/.test(cleanPhone)) {
       setError("Please enter a valid 10-digit phone number");
       toast.error("Please enter a valid 10-digit phone number");
       return;
@@ -105,12 +107,13 @@ const Cart = () => {
 
     try {
       console.log("Starting order placement...");
+      console.log("Phone number being saved:", phoneNumber);
 
       const orderData = {
         userId: user.uid,
         userName: user.displayName || user.email,
         userEmail: user.email,
-        userPhone: phoneNumber,
+        userPhone: phoneNumber, // This MUST be included
         restaurantId: restaurant?.id || "main",
         restaurantName: restaurant?.name || "Campus Food Court",
         items: cartItems.map((item) => ({
@@ -126,7 +129,7 @@ const Cart = () => {
         total,
         paymentMethod,
         deliveryAddress,
-        deliveryLocation: location, // Store location if available
+        deliveryLocation: location,
         specialInstructions: specialInstructions.trim() || null,
         status: "pending",
       };
@@ -135,6 +138,7 @@ const Cart = () => {
 
       const order = await orderService.createOrder(orderData);
       console.log("Order created successfully:", order);
+      console.log("Phone number in created order:", order.userPhone);
 
       clearCart();
       toast.success("Order placed successfully!");
@@ -277,6 +281,9 @@ const Cart = () => {
                     required
                   />
                 </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Delivery partner will use this to contact you
+                </p>
               </div>
 
               {/* Location */}

@@ -16,6 +16,7 @@ export const CartProvider = ({ children }) => {
   const [restaurant, setRestaurant] = useState(null)
   const [isInitialized, setIsInitialized] = useState(false)
   const isMounted = useRef(true)
+  const lastActionRef = useRef({ id: null, time: 0 })
 
   // Load cart from localStorage only once on mount
   useEffect(() => {
@@ -56,6 +57,13 @@ export const CartProvider = ({ children }) => {
   }, [cartItems, restaurant, isInitialized])
 
   const addToCart = useCallback((item, newRestaurant) => {
+    // Prevent duplicate toasts by checking if this item was just added
+    const now = Date.now()
+    if (lastActionRef.current.id === item.id && now - lastActionRef.current.time < 1000) {
+      console.log('Duplicate add prevented')
+      return // Skip if same item added within 1 second
+    }
+
     if (restaurant && restaurant.id !== newRestaurant.id && cartItems.length > 0) {
       const shouldClear = window.confirm('Adding items from a different restaurant will clear your current cart. Continue?')
       if (!shouldClear) return
@@ -68,12 +76,28 @@ export const CartProvider = ({ children }) => {
       const existingItem = prevItems.find(i => i.id === item.id)
       
       if (existingItem) {
-        toast.success(`Updated ${item.name} quantity`)
+        // Update last action ref
+        lastActionRef.current = { id: item.id, time: now }
+        
+        // Only show toast if not a duplicate
+        toast.success(`Updated ${item.name} quantity`, {
+          id: `update-${item.id}-${now}`, // Unique ID to prevent duplicates
+          duration: 2000
+        })
+        
         return prevItems.map(i =>
           i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
         )
       } else {
-        toast.success(`Added ${item.name} to cart`)
+        // Update last action ref
+        lastActionRef.current = { id: item.id, time: now }
+        
+        // Only show toast if not a duplicate
+        toast.success(`Added ${item.name} to cart`, {
+          id: `add-${item.id}-${now}`, // Unique ID to prevent duplicates
+          duration: 2000
+        })
+        
         return [...prevItems, { ...item, quantity: 1 }]
       }
     })
@@ -83,7 +107,10 @@ export const CartProvider = ({ children }) => {
     setCartItems(prevItems => {
       const item = prevItems.find(i => i.id === itemId)
       if (item) {
-        toast.success(`Removed ${item.name} from cart`)
+        toast.success(`Removed ${item.name} from cart`, {
+          id: `remove-${itemId}-${Date.now()}`,
+          duration: 2000
+        })
       }
       return prevItems.filter(i => i.id !== itemId)
     })
@@ -105,7 +132,10 @@ export const CartProvider = ({ children }) => {
   const clearCart = useCallback(() => {
     setCartItems([])
     setRestaurant(null)
-    toast.success('Cart cleared')
+    toast.success('Cart cleared', {
+      id: 'clear-cart',
+      duration: 2000
+    })
   }, [])
 
   const getCartTotal = useCallback(() => {

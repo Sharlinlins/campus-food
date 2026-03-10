@@ -15,7 +15,8 @@ import {
   TruckIcon,
   FireIcon,
   CubeIcon,
-  ShoppingBagIcon 
+  ShoppingBagIcon,
+  ArchiveBoxIcon
 } from '@heroicons/react/24/outline'
 
 const MyOrders = () => {
@@ -25,7 +26,7 @@ const MyOrders = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
 
-  // Memoized fetch function
+  // Fetch orders
   const fetchOrders = useCallback(async () => {
     if (!user) return
     setLoading(true)
@@ -70,6 +71,14 @@ const MyOrders = () => {
     return order.status === filter
   })
 
+  // Separate orders for summary
+  const activeOrders = orders.filter(o => 
+    ![ORDER_STATUS.DELIVERED, ORDER_STATUS.CANCELLED].includes(o.status)
+  )
+  const completedOrders = orders.filter(o => 
+    [ORDER_STATUS.DELIVERED, ORDER_STATUS.CANCELLED].includes(o.status)
+  )
+
   // Get appropriate icon for each status
   const getStatusIcon = (status) => {
     switch(status) {
@@ -95,12 +104,13 @@ const MyOrders = () => {
 
   // Define filters with their properties
   const filters = [
-    { value: 'all', label: 'All Orders', icon: ShoppingBagIcon },
-    { value: 'active', label: 'Active', icon: FireIcon },
-    { value: 'pending', label: 'Pending', icon: ClockIcon },
-    { value: 'on_the_way', label: 'On The Way', icon: TruckIcon },
-    { value: 'completed', label: 'Completed', icon: CheckCircleIcon },
-    { value: 'cancelled', label: 'Cancelled', icon: XCircleIcon }
+    { value: 'all', label: 'All Orders', icon: ShoppingBagIcon, count: orders.length },
+    { value: 'active', label: 'Active', icon: FireIcon, count: activeOrders.length },
+    { value: 'completed', label: 'Completed', icon: ArchiveBoxIcon, count: completedOrders.length },
+    { value: 'pending', label: 'Pending', icon: ClockIcon, count: orders.filter(o => o.status === ORDER_STATUS.PENDING).length },
+    { value: 'on_the_way', label: 'On The Way', icon: TruckIcon, count: orders.filter(o => o.status === ORDER_STATUS.ON_THE_WAY).length },
+    { value: 'delivered', label: 'Delivered', icon: CheckCircleIcon, count: orders.filter(o => o.status === ORDER_STATUS.DELIVERED).length },
+    { value: 'cancelled', label: 'Cancelled', icon: XCircleIcon, count: orders.filter(o => o.status === ORDER_STATUS.CANCELLED).length }
   ]
 
   const handleViewDetails = (order) => {
@@ -110,12 +120,8 @@ const MyOrders = () => {
   // Get count for each filter
   const getFilterCount = (filterValue) => {
     if (filterValue === 'all') return orders.length
-    if (filterValue === 'active') {
-      return orders.filter(o => ![ORDER_STATUS.DELIVERED, ORDER_STATUS.CANCELLED].includes(o.status)).length
-    }
-    if (filterValue === 'completed') {
-      return orders.filter(o => [ORDER_STATUS.DELIVERED, ORDER_STATUS.CANCELLED].includes(o.status)).length
-    }
+    if (filterValue === 'active') return activeOrders.length
+    if (filterValue === 'completed') return completedOrders.length
     return orders.filter(o => o.status === filterValue).length
   }
 
@@ -134,12 +140,31 @@ const MyOrders = () => {
           <p className="text-gray-600">Track and manage your food orders</p>
         </motion.div>
 
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <GlassCard className="p-4 text-center">
+            <p className="text-2xl font-bold text-primary-600">{orders.length}</p>
+            <p className="text-sm text-gray-600">Total Orders</p>
+          </GlassCard>
+          <GlassCard className="p-4 text-center">
+            <p className="text-2xl font-bold text-green-600">{activeOrders.length}</p>
+            <p className="text-sm text-gray-600">Active Orders</p>
+          </GlassCard>
+          <GlassCard className="p-4 text-center">
+            <p className="text-2xl font-bold text-purple-600">{completedOrders.length}</p>
+            <p className="text-sm text-gray-600">Completed Orders</p>
+          </GlassCard>
+        </div>
+
         {/* Filters with counts */}
         <div className="mb-8 overflow-x-auto pb-2 scrollbar-hide">
           <div className="flex gap-2 min-w-max">
             {filters.map((f) => {
-              const count = getFilterCount(f.value)
               const Icon = f.icon
+              const count = getFilterCount(f.value)
+              
+              // Only show filters with count > 0 or 'all' filter
+              if (f.value !== 'all' && count === 0) return null
               
               return (
                 <button
@@ -200,6 +225,8 @@ const MyOrders = () => {
                   <p className="text-gray-400 text-sm mb-6">
                     {filter === 'all' 
                       ? "You haven't placed any orders yet" 
+                      : filter === 'completed'
+                      ? "You don't have any completed orders yet"
                       : `No ${filter} orders at the moment`}
                   </p>
                   <Button onClick={() => navigate('/menu')} variant="primary">
@@ -232,6 +259,26 @@ const MyOrders = () => {
               </motion.div>
             )}
           </AnimatePresence>
+        )}
+
+        {/* Debug Info - Remove in production */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-8 p-4 bg-gray-100 rounded-lg">
+            <p className="text-sm font-medium text-gray-700">Debug Info:</p>
+            <p className="text-xs text-gray-600">Total Orders: {orders.length}</p>
+            <p className="text-xs text-gray-600">Active Orders: {activeOrders.length}</p>
+            <p className="text-xs text-gray-600">Completed Orders: {completedOrders.length}</p>
+            <details className="mt-2">
+              <summary className="text-xs text-primary-600 cursor-pointer">View Orders</summary>
+              <pre className="text-xs mt-2 bg-gray-800 text-white p-2 rounded overflow-auto">
+                {JSON.stringify(orders.map(o => ({ 
+                  id: o.id, 
+                  status: o.status,
+                  total: o.total 
+                })), null, 2)}
+              </pre>
+            </details>
+          </div>
         )}
       </div>
     </div>

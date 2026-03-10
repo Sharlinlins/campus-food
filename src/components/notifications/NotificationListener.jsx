@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext'
 import { notificationService } from '../../services/notificationService'
 import NotificationToast from './NotificationToast'
 import { BellIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
-import {motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 
 const NotificationListener = () => {
   const { user } = useAuth()
@@ -13,7 +13,7 @@ const NotificationListener = () => {
   const [showNotifications, setShowNotifications] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
-  // Use useCallback to memoize functions
+  // Fetch user notifications
   const fetchUserNotifications = useCallback(async () => {
     if (!user) return
     
@@ -25,6 +25,7 @@ const NotificationListener = () => {
     }
   }, [user])
 
+  // Initialize notifications
   const initializeNotifications = useCallback(async () => {
     setIsLoading(true)
     const { granted, error, message } = await notificationService.requestPermission(user?.uid)
@@ -40,6 +41,7 @@ const NotificationListener = () => {
     setIsLoading(false)
   }, [user, fetchUserNotifications])
 
+  // Check permission and initialize
   const checkPermissionAndInitialize = useCallback(async () => {
     const status = notificationService.getPermissionStatus()
     
@@ -52,26 +54,24 @@ const NotificationListener = () => {
     }
   }, [initializeNotifications])
 
-  // Use useEffect with proper dependencies and conditions
+  // Set up notifications on mount
   useEffect(() => {
     let isMounted = true
     let intervalId = null
 
     const setupNotifications = async () => {
-      if (!user || !isMounted) return
+      if (!isMounted) return
       await checkPermissionAndInitialize()
     }
 
     setupNotifications()
 
-    // Set up interval only if needed
-    if (user) {
-      intervalId = setInterval(() => {
-        if (isMounted) {
-          fetchUserNotifications()
-        }
-      }, 30000)
-    }
+    // Poll for new notifications every 30 seconds
+    intervalId = setInterval(() => {
+      if (isMounted) {
+        fetchUserNotifications()
+      }
+    }, 30000)
 
     return () => {
       isMounted = false
@@ -79,7 +79,7 @@ const NotificationListener = () => {
         clearInterval(intervalId)
       }
     }
-  }, [user, checkPermissionAndInitialize, fetchUserNotifications]) // Add all dependencies
+  }, [checkPermissionAndInitialize, fetchUserNotifications])
 
   const handleEnableNotifications = async () => {
     await initializeNotifications()
@@ -100,6 +100,7 @@ const NotificationListener = () => {
     setNotifications(prev => prev.filter(n => n.id !== notificationId))
   }
 
+  // Don't render anything if no user (though AppContent already handles this)
   if (!user) return null
 
   return (
@@ -191,7 +192,7 @@ const NotificationListener = () => {
                   disabled={isLoading}
                   className="w-full bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 flex items-center justify-center"
                 >
-                  <ArrowPathIcon className="h-4 w-4 mr-2" />
+                  <ArrowPathIcon className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
                   {isLoading ? 'Checking...' : 'I\'ve enabled them, try again'}
                 </button>
               </div>
@@ -216,7 +217,7 @@ const NotificationListener = () => {
 
         {/* Notifications dropdown */}
         <AnimatePresence>
-          {showNotifications && notifications.length > 0 && (
+          {showNotifications && (
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -227,18 +228,24 @@ const NotificationListener = () => {
                 <h3 className="font-semibold text-gray-700">Notifications</h3>
               </div>
               <div className="max-h-96 overflow-y-auto">
-                {notifications.map((notif) => (
-                  <div key={notif.id} className="p-3 border-b hover:bg-gray-50">
-                    <p className="text-sm font-medium text-gray-800">{notif.title || 'Notification'}</p>
-                    <p className="text-xs text-gray-600 mt-1">{notif.body || ''}</p>
-                    <button
-                      onClick={() => handleMarkAsRead(notif.id)}
-                      className="text-xs text-primary-600 mt-2 hover:underline"
-                    >
-                      Mark as read
-                    </button>
+                {notifications.length > 0 ? (
+                  notifications.map((notif) => (
+                    <div key={notif.id} className="p-3 border-b hover:bg-gray-50">
+                      <p className="text-sm font-medium text-gray-800">{notif.title || 'Notification'}</p>
+                      <p className="text-xs text-gray-600 mt-1">{notif.body || ''}</p>
+                      <button
+                        onClick={() => handleMarkAsRead(notif.id)}
+                        className="text-xs text-primary-600 mt-2 hover:underline"
+                      >
+                        Mark as read
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-gray-500 text-sm">
+                    No new notifications
                   </div>
-                ))}
+                )}
               </div>
             </motion.div>
           )}

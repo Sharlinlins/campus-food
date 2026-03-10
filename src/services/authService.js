@@ -1,4 +1,4 @@
-import { 
+import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
@@ -14,25 +14,43 @@ export const authService = {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
       const user = userCredential.user
-      
+
       // Get user role from Firestore
       const userDoc = await getDoc(doc(db, 'users', user.uid))
       const userData = userDoc.data()
-      
+
       return {
         ...user,
         role: userData?.role || 'student',
         ...userData
       }
     } catch (error) {
-      throw new Error(this.getErrorMessage(error.code))
+      console.error('Login error details:', {
+        code: error.code,
+        message: error.message,
+        email: email
+      })
+
+      // Map Firebase error codes to user-friendly messages
+      const errorMessages = {
+        'auth/invalid-email': 'Please enter a valid email address',
+        'auth/user-disabled': 'This account has been disabled',
+        'auth/user-not-found': 'Incorrect email or password', // Changed from specific message
+        'auth/wrong-password': 'Incorrect email or password', // Changed to same message
+        'auth/invalid-credential': 'Incorrect email or password', // Added for security
+        'auth/too-many-requests': 'Too many failed login attempts. Please try again later.',
+        'auth/network-request-failed': 'Network error. Please check your internet connection.'
+      }
+
+      // Throw generic error for security (don't reveal if email exists)
+      throw new Error(errorMessages[error.code] || 'Incorrect email or password')
     }
   },
 
   async register(userData) {
     try {
       const { email, password, name, role = 'student' } = userData
-      
+
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
       const user = userCredential.user
 

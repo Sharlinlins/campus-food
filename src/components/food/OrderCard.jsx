@@ -3,11 +3,10 @@ import { motion } from 'framer-motion'
 import GlassCard from '../ui/GlassCard'
 import Button from '../ui/Button'
 import { ORDER_STATUS_LABELS } from '../../utils/constants'
-import { formatDate, formatCurrency } from '../../utils/formatDate' // Use formatCurrency instead of $
-import { ClockIcon, MapPinIcon, UserIcon } from '@heroicons/react/24/outline'
+import { formatDate, formatCurrency } from '../../utils/formatDate'
+import { ClockIcon, MapPinIcon, UserIcon, PhoneIcon } from '@heroicons/react/24/outline'
 
-
-// Status color mapping - simplified and direct
+// Status color mapping
 const STATUS_COLORS = {
   pending: 'bg-yellow-100 text-yellow-800',
   confirmed: 'bg-blue-100 text-blue-800',
@@ -28,6 +27,20 @@ const OrderCard = ({ order, onViewDetails, onUpdateStatus, userRole }) => {
 
   // Safe ID display
   const displayId = order.orderNumber || (order.id ? order.id.slice(-8) : 'N/A')
+
+  // Format phone number for display
+  const formatPhoneDisplay = (phone) => {
+    if (!phone) return 'Not provided'
+    // If it's an Indian number with +91
+    if (phone.startsWith('+91')) {
+      return phone
+    }
+    // If it's a 10-digit number
+    if (/^\d{10}$/.test(phone)) {
+      return `+91 ${phone.slice(0,5)} ${phone.slice(5)}`
+    }
+    return phone
+  }
 
   return (
     <motion.div
@@ -51,21 +64,27 @@ const OrderCard = ({ order, onViewDetails, onUpdateStatus, userRole }) => {
 
             <div className="space-y-1 text-sm text-gray-600">
               <p className="flex items-center gap-2">
-                <ClockIcon className="h-4 w-4" />
+                <ClockIcon className="h-4 w-4 flex-shrink-0" />
                 {formatDate(order.createdAt, 'relative')}
+              </p>
+              
+              {order.userName && (
+                <p className="flex items-center gap-2">
+                  <UserIcon className="h-4 w-4 flex-shrink-0" />
+                  {order.userName}
+                </p>
+              )}
+              
+              {/* NEW: Phone Number Display */}
+              <p className="flex items-center gap-2">
+                <PhoneIcon className="h-4 w-4 flex-shrink-0" />
+                <span className="font-medium">{formatPhoneDisplay(order.userPhone)}</span>
               </p>
               
               {order.deliveryAddress && (
                 <p className="flex items-center gap-2">
-                  <MapPinIcon className="h-4 w-4" />
+                  <MapPinIcon className="h-4 w-4 flex-shrink-0" />
                   <span className="truncate max-w-xs">{order.deliveryAddress}</span>
-                </p>
-              )}
-              
-              {order.userName && (
-                <p className="flex items-center gap-2">
-                  <UserIcon className="h-4 w-4" />
-                  {order.userName}
                 </p>
               )}
             </div>

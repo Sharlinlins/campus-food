@@ -11,12 +11,12 @@ export const notificationService = {
         console.log('Notifications not supported in this browser')
         return false
       }
-      
+
       if (!messaging) {
         console.log('Firebase Messaging not initialized')
         return false
       }
-      
+
       const supported = await isSupported().catch(() => false)
       return supported
     } catch (error) {
@@ -29,12 +29,12 @@ export const notificationService = {
   async requestPermission(userId) {
     try {
       console.log('🔔 Requesting notification permission...')
-      
+
       // Check if supported
       const supported = await this.isMessagingSupported()
       if (!supported) {
-        return { 
-          granted: false, 
+        return {
+          granted: false,
           error: 'not_supported',
           message: 'Notifications are not supported in this browser'
         }
@@ -45,8 +45,8 @@ export const notificationService = {
       console.log('Current permission:', permission)
 
       if (permission === 'denied') {
-        return { 
-          granted: false, 
+        return {
+          granted: false,
           error: 'denied',
           message: 'Notifications are blocked. Click the lock icon in the address bar and enable notifications.'
         }
@@ -66,16 +66,16 @@ export const notificationService = {
         return { granted: true, token }
       }
 
-      return { 
-        granted: false, 
+      return {
+        granted: false,
         error: 'denied_by_user',
         message: 'You denied notification permission. You can enable them later in browser settings.'
       }
 
     } catch (error) {
       console.error('Permission request error:', error)
-      return { 
-        granted: false, 
+      return {
+        granted: false,
         error: error.message,
         message: 'Failed to request notification permission'
       }
@@ -91,7 +91,7 @@ export const notificationService = {
       }
 
       console.log('Getting FCM token...')
-      
+
       // Check if we have VAPID key
       const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY
       if (!vapidKey) {
@@ -102,7 +102,7 @@ export const notificationService = {
       // Try to get token with retry logic
       let token = null
       let retries = 3
-      
+
       while (retries > 0 && !token) {
         try {
           token = await getToken(messaging, {
@@ -132,14 +132,14 @@ export const notificationService = {
       }
     } catch (error) {
       console.error('Error getting FCM token:', error)
-      
+
       // Provide specific error messages
       if (error.code === 'messaging/permission-blocked') {
         console.error('Notification permission was blocked. User needs to manually enable it.')
       } else if (error.name === 'AbortError' || error.message?.includes('permission denied')) {
         console.error('Permission denied. Please check browser notification settings.')
       }
-      
+
       return null
     }
   },
@@ -148,18 +148,18 @@ export const notificationService = {
   async saveUserToken(userId, token) {
     try {
       if (!userId || !token) return
-      
+
       console.log('Saving token for user:', userId)
-      
+
       // Check if token already exists
       const q = query(
         collection(db, 'notificationTokens'),
         where('userId', '==', userId),
         where('token', '==', token)
       )
-      
+
       const snapshot = await getDocs(q)
-      
+
       if (snapshot.empty) {
         await addDoc(collection(db, 'notificationTokens'), {
           userId,
@@ -212,10 +212,10 @@ export const notificationService = {
 
     onMessage(messaging, (payload) => {
       console.log('📨 Foreground message received:', payload)
-      
+
       const { title, body } = payload.notification || {}
       const data = payload.data || {}
-      
+
       // Dispatch a custom event that React components can listen to
       const event = new CustomEvent('notification-received', {
         detail: { title, body, data }
@@ -233,7 +233,7 @@ export const notificationService = {
         read: false,
         createdAt: serverTimestamp()
       }
-      
+
       await addDoc(collection(db, 'notifications'), notifData)
       console.log('✅ Notification created for user:', userId)
       return true
@@ -251,7 +251,7 @@ export const notificationService = {
         where('userId', '==', userId),
         where('read', '==', false)
       )
-      
+
       const snapshot = await getDocs(q)
       return snapshot.docs.map(doc => ({
         id: doc.id,
@@ -277,11 +277,53 @@ export const notificationService = {
     }
   },
 
+  // Add this method to the notificationService object
+  // Add or update this method in the notificationService object
+  // Add or update this method in the notificationService object
+  async markAllAsRead(userId) {
+    try {
+      if (!userId) return false
+
+      console.log(`📝 Marking all notifications as read for user: ${userId}`)
+
+      // Get all unread notifications for this user
+      const q = query(
+        collection(db, 'notifications'),
+        where('userId', '==', userId),
+        where('read', '==', false)
+      )
+
+      const snapshot = await getDocs(q)
+
+      if (snapshot.empty) {
+        console.log('No unread notifications to mark as read')
+        return true
+      }
+
+      console.log(`Found ${snapshot.size} unread notifications`)
+
+      // Update each notification
+      const updatePromises = snapshot.docs.map(doc =>
+        updateDoc(doc.ref, {
+          read: true,
+          readAt: serverTimestamp()
+        })
+      )
+
+      await Promise.all(updatePromises)
+      console.log(`✅ Successfully marked ${snapshot.size} notifications as read`)
+      return true
+    } catch (error) {
+      console.error('❌ Error marking all notifications as read:', error)
+      return false
+    }
+  },
+
   // Get permission status with helpful message
   getPermissionStatus() {
     const permission = Notification.permission
     const supported = 'Notification' in window
-    
+
     let message = ''
     if (!supported) {
       message = 'Notifications are not supported in this browser'
@@ -302,27 +344,27 @@ export const notificationService = {
   },
 
   // Reset notification state (call this when user wants to try again)
-// Add this function to the notificationService object
-async resetAndRequestPermission(userId) {
-  try {
-    // Clear any stored permissions in Firebase
-    if (userId) {
-      const q = query(
-        collection(db, 'notificationTokens'),
-        where('userId', '==', userId)
-      )
-      const snapshot = await getDocs(q)
-      const deletePromises = snapshot.docs.map(doc => 
-        deleteDoc(doc.ref).catch(() => {})
-      )
-      await Promise.all(deletePromises)
+  // Add this function to the notificationService object
+  async resetAndRequestPermission(userId) {
+    try {
+      // Clear any stored permissions in Firebase
+      if (userId) {
+        const q = query(
+          collection(db, 'notificationTokens'),
+          where('userId', '==', userId)
+        )
+        const snapshot = await getDocs(q)
+        const deletePromises = snapshot.docs.map(doc =>
+          deleteDoc(doc.ref).catch(() => { })
+        )
+        await Promise.all(deletePromises)
+      }
+
+      // Request permission again
+      return this.requestPermission(userId)
+    } catch (error) {
+      console.error('Error resetting permissions:', error)
+      return { granted: false, error: error.message }
     }
-    
-    // Request permission again
-    return this.requestPermission(userId)
-  } catch (error) {
-    console.error('Error resetting permissions:', error)
-    return { granted: false, error: error.message }
   }
-}
 }
