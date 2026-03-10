@@ -40,7 +40,6 @@ const NotificationBell = () => {
     if (!user) return
     
     try {
-        console.log('Marking all notifications as read...')
       await notificationService.markAllAsRead(user.uid)
       setNotifications([])
       setUnreadCount(0)

@@ -1,52 +1,52 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-import { useRole } from "../../context/RoleContext";
-import { useCart } from "../../context/CartContext";
-import NotificationBell from "../notifications/NotificationBell";
-import {
-  ShoppingCartIcon,
-  UserIcon,
+import React, { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import { useRole } from '../../context/RoleContext'
+import { useCart } from '../../context/CartContext'
+import NotificationBell from '../notifications/NotificationBell'
+import { 
+  ShoppingCartIcon, 
+  UserIcon, 
   Bars3Icon,
-  XMarkIcon,
-} from "@heroicons/react/24/outline";
-import { motion, AnimatePresence } from "framer-motion";
+  XMarkIcon 
+} from '@heroicons/react/24/outline'
+import { motion, AnimatePresence } from 'framer-motion'
 
 const Navbar = () => {
-  const { user, logout } = useAuth();
-  const { role } = useRole();
-  const { getCartCount } = useCart();
-  const navigate = useNavigate();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const { user, logout } = useAuth()
+  const { role } = useRole()
+  const { getCartCount } = useCart()
+  const navigate = useNavigate()
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
 
   const getDashboardLink = () => {
-    switch (role) {
-      case "admin":
-        return "/admin";
-      case "delivery":
-        return "/delivery";
+    switch(role) {
+      case 'admin':
+        return '/admin'
+      case 'delivery':
+        return '/delivery'
       default:
-        return "/menu";
+        return '/menu'
     }
-  };
+  }
 
   const navLinks = {
     student: [
-      { name: "Menu", path: "/menu" },
-      { name: "My Orders", path: "/my-orders" },
+      { name: 'Menu', path: '/menu' },
+      { name: 'My Orders', path: '/my-orders' }
     ],
     admin: [
-      { name: "Dashboard", path: "/admin" },
-      { name: "Analytics", path: "/admin/analytics" },
-      { name: "Menu", path: "/admin/menu" },
-      { name: "Orders", path: "/admin/orders" },
+      { name: 'Dashboard', path: '/admin' },
+      { name: 'Analytics', path: '/admin/analytics' },
+      { name: 'Menu', path: '/admin/menu' },
+      { name: 'Orders', path: '/admin/orders' }
     ],
     delivery: [
-      { name: "Dashboard", path: "/delivery" },
-      { name: "Assigned Orders", path: "/delivery/orders" },
-    ],
-  };
+      { name: 'Dashboard', path: '/delivery' },
+      { name: 'Assigned Orders', path: '/delivery/orders' }
+    ]
+  }
 
   return (
     <nav className="bg-white/80 backdrop-blur-md shadow-lg sticky top-0 z-50">
@@ -54,32 +54,26 @@ const Navbar = () => {
         <div className="flex justify-between h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <Link
-              to={getDashboardLink()}
-              className="flex items-center space-x-2"
-            >
+            <Link to={getDashboardLink()} className="flex items-center space-x-2">
               <img src="/logo.png" alt="Campus Food" className="h-8 w-8" />
-              <span className="text-xl font-bold text-primary-600">
-                CampusFood
-              </span>
+              <span className="text-xl font-bold text-primary-600">CampusFood</span>
             </Link>
           </div>
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-4">
             {/* Navigation Links */}
-            {user &&
-              navLinks[role]?.map((link) => (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                >
-                  {link.name}
-                </Link>
-              ))}
+            {user && navLinks[role]?.map(link => (
+              <Link
+                key={link.path}
+                to={link.path}
+                className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                {link.name}
+              </Link>
+            ))}
 
-            {/* Notification Bell - Only for logged in users */}
+            {/* Notification Bell - Desktop only */}
             {user && (
               <div className="hidden md:block">
                 <NotificationBell />
@@ -87,7 +81,7 @@ const Navbar = () => {
             )}
 
             {/* Cart - Only for students */}
-            {role === "student" && (
+            {role === 'student' && (
               <Link
                 to="/cart"
                 className="relative p-2 text-gray-700 hover:text-primary-600"
@@ -101,7 +95,7 @@ const Navbar = () => {
               </Link>
             )}
 
-            {/* Profile Dropdown - Only for logged in users */}
+            {/* Profile Dropdown */}
             {user && (
               <div className="relative">
                 <button
@@ -112,7 +106,7 @@ const Navbar = () => {
                     <UserIcon className="h-5 w-5 text-primary-600" />
                   </div>
                   <span className="text-sm font-medium text-gray-700">
-                    {user?.displayName || user?.email?.split("@")[0]}
+                    {user?.displayName || user?.email?.split('@')[0]}
                   </span>
                 </button>
 
@@ -133,9 +127,9 @@ const Navbar = () => {
                       </Link>
                       <button
                         onClick={() => {
-                          logout();
-                          setIsProfileOpen(false);
-                          navigate("/login");
+                          logout()
+                          setIsProfileOpen(false)
+                          navigate('/login')
                         }}
                         className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
                       >
@@ -150,7 +144,6 @@ const Navbar = () => {
 
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center">
-            {user && <NotificationBell />}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="p-2 rounded-md text-gray-700 ml-2"
@@ -170,13 +163,13 @@ const Navbar = () => {
         {isMobileMenuOpen && user && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
+            animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             className="md:hidden bg-white border-t"
           >
             <div className="px-2 pt-2 pb-3 space-y-1">
               {/* Navigation Links */}
-              {navLinks[role]?.map((link) => (
+              {navLinks[role]?.map(link => (
                 <Link
                   key={link.path}
                   to={link.path}
@@ -186,9 +179,9 @@ const Navbar = () => {
                   {link.name}
                 </Link>
               ))}
-
+              
               {/* Cart for Mobile */}
-              {role === "student" && (
+              {role === 'student' && (
                 <Link
                   to="/cart"
                   className="flex items-center justify-between px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md"
@@ -213,9 +206,9 @@ const Navbar = () => {
               {/* Logout for Mobile */}
               <button
                 onClick={() => {
-                  logout();
-                  setIsMobileMenuOpen(false);
-                  navigate("/login");
+                  logout()
+                  setIsMobileMenuOpen(false)
+                  navigate('/login')
                 }}
                 className="block w-full text-left px-3 py-2 text-base font-medium text-red-600 hover:bg-gray-50 rounded-md"
               >
@@ -226,7 +219,7 @@ const Navbar = () => {
         )}
       </AnimatePresence>
     </nav>
-  );
-};
+  )
+}
 
-export default Navbar;
+export default Navbar

@@ -10,7 +10,6 @@ const NotificationListener = () => {
   const [showPrompt, setShowPrompt] = useState(false)
   const [blockedMessage, setBlockedMessage] = useState('')
   const [notifications, setNotifications] = useState([])
-  const [showNotifications, setShowNotifications] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
   // Fetch user notifications
@@ -95,19 +94,14 @@ const NotificationListener = () => {
     setIsLoading(false)
   }
 
-  const handleMarkAsRead = async (notificationId) => {
-    await notificationService.markAsRead(notificationId)
-    setNotifications(prev => prev.filter(n => n.id !== notificationId))
-  }
-
-  // Don't render anything if no user (though AppContent already handles this)
+  // Don't render anything if no user
   if (!user) return null
 
   return (
     <>
       <NotificationToast />
 
-      {/* Notification Prompt */}
+      {/* Notification Permission Prompt */}
       <AnimatePresence>
         {showPrompt && !isLoading && (
           <motion.div
@@ -200,57 +194,6 @@ const NotificationListener = () => {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* In-app Notifications Bell */}
-      <div className="fixed bottom-4 right-4 z-50">
-        <button
-          onClick={() => setShowNotifications(!showNotifications)}
-          className="relative bg-primary-600 text-white p-3 rounded-full shadow-lg hover:bg-primary-700 transition-colors"
-        >
-          <BellIcon className="h-6 w-6" />
-          {notifications.length > 0 && (
-            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
-              {notifications.length}
-            </span>
-          )}
-        </button>
-
-        {/* Notifications dropdown */}
-        <AnimatePresence>
-          {showNotifications && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="absolute bottom-16 right-0 w-80 bg-white rounded-lg shadow-xl border overflow-hidden"
-            >
-              <div className="bg-gray-50 px-4 py-2 border-b">
-                <h3 className="font-semibold text-gray-700">Notifications</h3>
-              </div>
-              <div className="max-h-96 overflow-y-auto">
-                {notifications.length > 0 ? (
-                  notifications.map((notif) => (
-                    <div key={notif.id} className="p-3 border-b hover:bg-gray-50">
-                      <p className="text-sm font-medium text-gray-800">{notif.title || 'Notification'}</p>
-                      <p className="text-xs text-gray-600 mt-1">{notif.body || ''}</p>
-                      <button
-                        onClick={() => handleMarkAsRead(notif.id)}
-                        className="text-xs text-primary-600 mt-2 hover:underline"
-                      >
-                        Mark as read
-                      </button>
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-4 text-center text-gray-500 text-sm">
-                    No new notifications
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
     </>
   )
 }

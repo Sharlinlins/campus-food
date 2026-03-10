@@ -5,7 +5,6 @@ import { CartProvider } from './context/CartContext'
 import { RoleProvider } from './context/RoleContext'
 import ProtectedRoute from './components/layout/ProtectedRoute'
 import NotificationListener from './components/notifications/NotificationListener'
-import Notifications from './pages/notifications/Notifications'
 import MobileNotificationBell from './components/notifications/MobileNotificationBell'
 
 // Auth Pages
@@ -31,6 +30,9 @@ import AssignedOrders from './pages/delivery/AssignedOrders'
 
 // Profile Page
 import Profile from './pages/profile/Profile'
+
+// Notifications Page
+import Notifications from './pages/notifications/Notifications'
 
 // Other
 import NotFound from './pages/NotFound'
@@ -63,11 +65,14 @@ const AppContent = () => {
   
   return (
     <>
+      {/* NotificationListener handles toasts and permission prompts - NO floating bell */}
       {showNotifications && <NotificationListener />}
+      
+      {/* MobileNotificationBell handles the floating bell - ONLY on mobile */}
       {showNotifications && <MobileNotificationBell />}
       
       <Routes>
-        {/* Public Routes - No notifications here */}
+        {/* Public Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         
@@ -91,7 +96,8 @@ const AppContent = () => {
         
         {/* Profile Route */}
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-
+        
+        {/* Notifications Route */}
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         
         {/* 404 */}
