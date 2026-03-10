@@ -41,41 +41,41 @@ const OrderCard = ({ order, onViewDetails, onUpdateStatus, userRole }) => {
       exit={{ opacity: 0, y: -20 }}
       layout
     >
-      <GlassCard className="p-3 md:p-6 hover:shadow-2xl transition-all duration-300">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4">
+      <GlassCard className="p-4 hover:shadow-xl transition-all duration-300">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           {/* Order Info */}
           <div className="flex-1">
-            <div className="flex items-center gap-2 md:gap-3 mb-1 md:mb-2">
-              <h3 className="text-sm md:text-base lg:text-lg font-semibold text-gray-800">
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="text-base font-semibold text-gray-800">
                 Order #{displayId}
               </h3>
-              <span className={`px-2 md:px-3 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-semibold ${getStatusBadge()}`}>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getStatusBadge()}`}>
                 {ORDER_STATUS_LABELS[order.status] || order.status}
               </span>
             </div>
 
-            <div className="space-y-1 text-[10px] md:text-xs lg:text-sm text-gray-600">
-              <p className="flex items-center gap-1 md:gap-2">
-                <ClockIcon className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
-                <span className="truncate">{formatDate(order.createdAt, 'relative')}</span>
+            <div className="space-y-1.5 text-sm text-gray-600">
+              <p className="flex items-center gap-1.5">
+                <ClockIcon className="h-4 w-4 flex-shrink-0" />
+                <span>{formatDate(order.createdAt, 'relative')}</span>
               </p>
               
               {order.userName && (
-                <p className="flex items-center gap-1 md:gap-2">
-                  <UserIcon className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
-                  <span className="truncate">{order.userName}</span>
+                <p className="flex items-center gap-1.5">
+                  <UserIcon className="h-4 w-4 flex-shrink-0" />
+                  <span>{order.userName}</span>
                 </p>
               )}
               
-              <p className="flex items-center gap-1 md:gap-2">
-                <PhoneIcon className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
-                <span className="truncate text-[10px] md:text-xs">{formatPhoneDisplay(order.userPhone)}</span>
+              <p className="flex items-center gap-1.5">
+                <PhoneIcon className="h-4 w-4 flex-shrink-0" />
+                <span className="text-sm">{formatPhoneDisplay(order.userPhone)}</span>
               </p>
               
               {order.deliveryAddress && (
-                <p className="flex items-center gap-1 md:gap-2">
-                  <MapPinIcon className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
-                  <span className="truncate max-w-[150px] md:max-w-xs text-[10px] md:text-xs">
+                <p className="flex items-center gap-1.5">
+                  <MapPinIcon className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate max-w-[200px] text-sm">
                     {order.deliveryAddress}
                   </span>
                 </p>
@@ -83,16 +83,16 @@ const OrderCard = ({ order, onViewDetails, onUpdateStatus, userRole }) => {
             </div>
 
             {/* Items Preview */}
-            <div className="mt-2 md:mt-3">
-              <p className="text-[10px] md:text-xs font-medium text-gray-700 mb-1">Items:</p>
+            <div className="mt-3">
+              <p className="text-xs font-medium text-gray-700 mb-1">Items:</p>
               <div className="flex flex-wrap gap-1">
                 {order.items?.slice(0, 3).map((item, idx) => (
-                  <span key={idx} className="text-[8px] md:text-xs bg-gray-100 px-1.5 md:px-2 py-0.5 rounded-full">
+                  <span key={idx} className="text-xs bg-gray-100 px-2 py-0.5 rounded-full">
                     {item.quantity}x {item.name}
                   </span>
                 ))}
                 {order.items?.length > 3 && (
-                  <span className="text-[8px] md:text-xs bg-gray-100 px-1.5 md:px-2 py-0.5 rounded-full">
+                  <span className="text-xs bg-gray-100 px-2 py-0.5 rounded-full">
                     +{order.items.length - 3}
                   </span>
                 )}
@@ -101,21 +101,21 @@ const OrderCard = ({ order, onViewDetails, onUpdateStatus, userRole }) => {
           </div>
 
           {/* Price and Actions */}
-          <div className="flex flex-row md:flex-col items-center justify-between md:items-end gap-2 md:gap-3 mt-2 md:mt-0">
+          <div className="flex flex-row md:flex-col items-center justify-between md:items-end gap-2 mt-2 md:mt-0">
             <div className="text-right">
-              <p className="text-base md:text-lg lg:text-2xl font-bold text-primary-600">
+              <p className="text-lg font-bold text-primary-600">
                 {formatCurrency(order.total)}
               </p>
-              <p className="text-[10px] md:text-xs text-gray-500">
+              <p className="text-xs text-gray-500">
                 {order.items?.length || 0} items
               </p>
             </div>
 
-            <div className="flex gap-1 md:gap-2">
+            <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                className="text-xs md:text-sm px-2 md:px-3 py-1"
+                className="text-xs px-3 py-1.5"
                 onClick={() => onViewDetails(order)}
               >
                 View
@@ -125,7 +125,7 @@ const OrderCard = ({ order, onViewDetails, onUpdateStatus, userRole }) => {
                 <Button
                   variant="primary"
                   size="sm"
-                  className="text-xs md:text-sm px-2 md:px-3 py-1"
+                  className="text-xs px-3 py-1.5"
                   onClick={() => onUpdateStatus(order)}
                 >
                   Update
