@@ -2,25 +2,34 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Navbar from '../../components/layout/Navbar'
 import GlassCard from '../../components/ui/GlassCard'
+import Button from '../../components/ui/Button'
 import RevenueChart from '../../components/charts/RevenueChart'
 import MostSoldPie from '../../components/charts/MostSoldPie'
 import OrdersTrendLine from '../../components/charts/OrdersTrendLine'
+import ExportModal from '../../components/admin/ExportModal'
 import { orderService } from '../../services/orderService'
+import { exportService } from '../../services/exportService'
 import { db } from '../../services/firebase'
-import { collection, getDocs, query, where, Timestamp } from 'firebase/firestore'
+import { collection, getDocs } from 'firebase/firestore'
 import { 
   ShoppingBagIcon, 
   UsersIcon, 
   CurrencyDollarIcon,
   ArrowTrendingUpIcon,
   TruckIcon,
-  ClockIcon 
+  ClockIcon,
+  DocumentArrowDownIcon
 } from '@heroicons/react/24/outline'
 import { formatCurrency, formatNumber } from '../../utils/formatDate'
 import { motion } from 'framer-motion'
+import toast from 'react-hot-toast'
 
 const AdminDashboard = () => {
   const [loading, setLoading] = useState(true)
+  const [exportModalOpen, setExportModalOpen] = useState(false)
+  const [exportType, setExportType] = useState('orders')
+  const [orders, setOrders] = useState([])
+  const [users, setUsers] = useState([])
   const [stats, setStats] = useState({
     totalOrders: 0,
     totalRevenue: 0,
@@ -46,33 +55,35 @@ const AdminDashboard = () => {
     try {
       // Fetch all orders
       const ordersSnapshot = await getDocs(collection(db, 'orders'))
-      const orders = ordersSnapshot.docs.map(doc => ({
+      const ordersData = ordersSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }))
+      setOrders(ordersData)
 
       // Fetch all users
       const usersSnapshot = await getDocs(collection(db, 'users'))
-      const users = usersSnapshot.docs.map(doc => ({
+      const usersData = usersSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }))
+      setUsers(usersData)
 
       // Calculate stats
-      const totalOrders = orders.length
-      const totalRevenue = orders.reduce((sum, order) => sum + (order.total || 0), 0)
-      const pendingOrders = orders.filter(o => o.status === 'pending').length
+      const totalOrders = ordersData.length
+      const totalRevenue = ordersData.reduce((sum, order) => sum + (order.total || 0), 0)
+      const pendingOrders = ordersData.filter(o => o.status === 'pending').length
       const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0
 
       // User stats
-      const totalUsers = users.filter(u => u.role === 'student').length
-      const totalDeliveryBoys = users.filter(u => u.role === 'delivery').length
-      const activeDeliveryBoys = users.filter(u => u.role === 'delivery' && u.status === 'active').length
+      const totalUsers = usersData.filter(u => u.role === 'student').length
+      const totalDeliveryBoys = usersData.filter(u => u.role === 'delivery').length
+      const activeDeliveryBoys = usersData.filter(u => u.role === 'delivery' && u.status === 'active').length
 
       // Today's stats
       const today = new Date()
       today.setHours(0, 0, 0, 0)
-      const todayOrders = orders.filter(order => {
+      const todayOrders = ordersData.filter(order => {
         const orderDate = order.createdAt?.toDate?.() || new Date(order.createdAt)
         return orderDate >= today
       })
@@ -91,19 +102,20 @@ const AdminDashboard = () => {
       })
 
       // Generate revenue data for chart (last 7 days)
-      const last7Days = generateLast7DaysData(orders)
+      const last7Days = generateLast7DaysData(ordersData)
       setRevenueData(last7Days)
 
       // Get popular items
-      const popular = await getPopularItems(orders)
+      const popular = await getPopularItems(ordersData)
       setPopularItems(popular)
 
       // Generate orders trend
-      const trend = generateOrdersTrend(orders)
+      const trend = generateOrdersTrend(ordersData)
       setOrdersTrend(trend)
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
+      toast.error('Failed to load dashboard data')
     } finally {
       setLoading(false)
     }
@@ -183,6 +195,74 @@ const AdminDashboard = () => {
     }
     
     return data
+  }
+
+  const handleExport = async (options) => {
+    try {
+      toast.loading('Preparing export...', { id: 'export' })
+
+      let reportData = []
+      let filename = ''
+      let title = ''
+
+      switch(exportType) {
+        case 'orders':
+          reportData = exportService.prepareOrdersReport(orders)
+          filename = 'orders_report'
+          title = 'Orders Report'
+          break
+        case 'revenue':
+          reportData = exportService.prepareRevenueReport(orders)
+          filename = 'revenue_report'
+          title = 'Revenue Report'
+          break
+        case 'delivery':
+          reportData = exportService.prepareDeliveryReport(orders)
+          filename = 'delivery_report'
+          title = 'Delivery Performance Report'
+          break
+        case 'users':
+          reportData = exportService.prepareUserReport(users)
+          filename = 'users_report'
+          title = 'Users Report'
+          break
+        case 'items':
+          reportData = exportService.preparePopularItemsReport(popularItems)
+          filename = 'popular_items_report'
+          title = 'Popular Items Report'
+          break
+        default:
+          reportData = exportService.prepareOrdersReport(orders)
+          filename = 'report'
+          title = 'Report'
+      }
+
+      // Apply date filtering if needed
+      if (options.dateRange !== 'all') {
+        // Add date filtering logic here
+        // This would filter reportData based on date range
+      }
+
+      // Export based on format
+      switch(options.format) {
+        case 'excel':
+          exportService.exportToExcel(reportData, filename)
+          break
+        case 'csv':
+          exportService.exportToCSV(reportData, filename)
+          break
+        case 'pdf':
+          exportService.exportToPDF(reportData, title, filename)
+          break
+        default:
+          exportService.exportToExcel(reportData, filename)
+      }
+
+      toast.success('Export completed successfully!', { id: 'export' })
+    } catch (error) {
+      console.error('Export failed:', error)
+      toast.error('Export failed. Please try again.', { id: 'export' })
+    }
   }
 
   const statCards = [
@@ -265,12 +345,59 @@ const AdminDashboard = () => {
             <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
             <p className="text-gray-600">Welcome back! Here's what's happening today.</p>
           </div>
-          <button
-            onClick={fetchDashboardData}
-            className="px-4 py-2 bg-white rounded-lg shadow hover:shadow-md transition-shadow"
-          >
-            🔄 Refresh Data
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={fetchDashboardData}
+              className="px-4 py-2 bg-white rounded-lg shadow hover:shadow-md transition-shadow flex items-center gap-2"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Refresh
+            </button>
+            
+            {/* Export Dropdown */}
+            <div className="relative group">
+              <button className="px-4 py-2 bg-primary-600 text-white rounded-lg shadow hover:bg-primary-700 transition-colors flex items-center gap-2">
+                <DocumentArrowDownIcon className="h-4 w-4" />
+                Export Report
+              </button>
+              
+              {/* Dropdown Menu */}
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 hidden group-hover:block z-10">
+                <button
+                  onClick={() => { setExportType('orders'); setExportModalOpen(true); }}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  📦 Orders Report
+                </button>
+                <button
+                  onClick={() => { setExportType('revenue'); setExportModalOpen(true); }}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  💰 Revenue Report
+                </button>
+                <button
+                  onClick={() => { setExportType('delivery'); setExportModalOpen(true); }}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  🚚 Delivery Report
+                </button>
+                <button
+                  onClick={() => { setExportType('users'); setExportModalOpen(true); }}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  👥 Users Report
+                </button>
+                <button
+                  onClick={() => { setExportType('items'); setExportModalOpen(true); }}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  🔥 Popular Items Report
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Stats Grid */}
@@ -301,21 +428,12 @@ const AdminDashboard = () => {
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <RevenueChart 
-            data={revenueData} 
-            title="Revenue (Last 7 Days)" 
-          />
-          <MostSoldPie 
-            data={popularItems} 
-            title="Most Popular Items" 
-          />
+          <RevenueChart data={revenueData} title="Weekly Revenue" />
+          <MostSoldPie data={popularItems} title="Most Popular Items" />
         </div>
 
         <div className="grid grid-cols-1 gap-8">
-          <OrdersTrendLine 
-            data={ordersTrend} 
-            title="Orders Trend (Last 7 Days)" 
-          />
+          <OrdersTrendLine data={ordersTrend} title="Orders Trend (Last 7 Days)" />
         </div>
 
         {/* Quick Actions */}
@@ -349,7 +467,7 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Recent Activity Preview */}
+        {/* Today's Summary */}
         <div className="mt-8">
           <h2 className="text-xl font-semibold mb-4">Today's Summary</h2>
           <GlassCard className="p-6">
@@ -374,6 +492,14 @@ const AdminDashboard = () => {
           </GlassCard>
         </div>
       </div>
+
+      {/* Export Modal */}
+      <ExportModal
+        isOpen={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        onExport={handleExport}
+        title={`Export ${exportType.charAt(0).toUpperCase() + exportType.slice(1)} Report`}
+      />
     </div>
   )
 }
